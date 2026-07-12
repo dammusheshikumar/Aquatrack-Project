@@ -1,0 +1,67 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: aquatrack-backend
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/aquatrack?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: DSh@2006
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: alcyoneusone14@gmail.com
+    password: xogh cylv jxjx wgar
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+aquatrack:
+  jwt:
+    secret: ${JWT_SECRET:aquatrack-super-secret-key-change-this-in-production-1234567890}
+    expiration-ms: 86400000
+  alerts:
+    overuse-threshold-percent: 120
+    anomaly-std-dev-multiplier: 2
+    scheduler-cron: "0 0 7 * * *"
+  cors:
+    allowed-origins: http://localhost:3000
+  google:
+    client-id: 205083517140-l221jnmohmpeiqgop4lgclj9ctr70oeb.apps.googleusercontent.com
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    com.aquatrack: INFO
