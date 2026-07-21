@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
 } from "recharts";
 import Navbar from "../components/Navbar";
 import axiosClient from "../api/axiosClient";
@@ -22,7 +22,9 @@ export default function ResidentDashboard() {
   const [invoices, setInvoices] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [peer, setPeer] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
 
+  // Load all dashboard metrics concurrently
   const loadAll = useCallback(async () => {
     if (!householdId) return;
     try {
@@ -37,12 +39,41 @@ export default function ResidentDashboard() {
       setAlerts(alertRes.data);
       setPeer(peerRes.data);
     } catch (e) {
-      // ignore - dashboard renders with whatever loaded
+      console.error("Dashboard failed to fill completely:", e);
     }
   }, [householdId]);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
 
+  // Handle authenticated secure file downloads via blob transformation
+  const handleDownloadPdf = async (invoiceId) => {
+    setDownloadingId(invoiceId);
+    try {
+      const res = await axiosClient.get(`/resident/invoices/${invoiceId}/pdf`, { 
+        responseType: "blob" 
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `invoice-${invoiceId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup DOM node & object URL reference memory
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Could not download invoice PDF:", err);
+      alert("Failed to download invoice PDF. Please try again later.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  // Memoized Chart formatting
   const chartData = usage.map((u) => ({
     date: u.readingDate,
     consumption: Number(u.consumptionKl || 0),
@@ -54,43 +85,56 @@ export default function ResidentDashboard() {
     { label: "Similar-sized Avg", value: peer.similarSizedAverageKl },
   ] : [];
 
+  const activeAlerts = alerts.filter(a => !a.resolved);
+
   return (
     <div>
       <Navbar />
       <div className="container" style={{ paddingTop: 32, paddingBottom: 48 }}>
-        <div className="dash-header">
+        
+        {/* Dashboard Header */}
+        <div className="dash-header" style={{ marginBottom: 24 }}>
           <div>
             <h1 className="page-title">Welcome back, {user?.fullName}</h1>
-            <p className="page-subtitle" style={{ marginBottom: 0 }}>Your household's water consumption, billing, and alerts.</p>
+            <p className="page-subtitle" style={{ marginBottom: 0 }}>
+              Your household's water consumption, billing, and alerts.
+            </p>
           </div>
         </div>
 
+        {/* Statistical Overview Cards */}
         <div className="grid grid-3" style={{ marginBottom: 24 }}>
           <div className="card stat-card">
             <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>💧 Latest reading</div>
-            <div className="stat-value">{chartData.length ? chartData[chartData.length - 1].consumption.toFixed(2) : "0.00"} kL</div>
+            <div className="stat-value">
+              {chartData.length ? chartData[chartData.length - 1].consumption.toFixed(2) : "0.00"} kL
+            </div>
             <div className="stat-label">Consumption on last logged day</div>
           </div>
+          
           <div className="card stat-card">
             <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>🧾 Most recent bill</div>
             <div className="stat-value">{invoices.length ? `Rs. ${invoices[0].total}` : "—"}</div>
             <div className="stat-label">From your latest finalized invoice</div>
           </div>
+          
           <div className="card stat-card">
             <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>🔔 Active alerts</div>
-            <div className="stat-value">{alerts.filter(a => !a.resolved).length}</div>
+            <div className="stat-value">{activeAlerts.length}</div>
             <div className="stat-label">Overuse or leak signals needing attention</div>
           </div>
         </div>
 
-        {alerts.filter(a => !a.resolved).length > 0 && (
-          <div className="alert-banner">
-            {alerts.filter(a => !a.resolved).slice(0, 3).map((a) => (
+        {/* Dynamic Critical Action Banners */}
+        {activeAlerts.length > 0 && (
+          <div className="alert-banner" style={{ marginBottom: 24 }}>
+            {activeAlerts.slice(0, 3).map((a) => (
               <div key={a.id} style={{ marginBottom: 4 }}>⚠ {a.message}</div>
             ))}
           </div>
         )}
 
+        {/* Charts Section */}
         <div className="grid grid-2" style={{ marginBottom: 24 }}>
           <div className="card">
             <h3 style={{ marginBottom: 16 }}>Daily Consumption Trend</h3>
@@ -117,10 +161,13 @@ export default function ResidentDashboard() {
                   <Bar dataKey="value" fill="#f4b942" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <p style={{ color: "#4b5f63", fontSize: 13 }}>Not enough data yet.</p>}
+            ) : (
+              <p style={{ color: "#4b5f63", fontSize: 13 }}>Not enough data yet.</p>
+            )}
           </div>
         </div>
 
+        {/* Water-Saving Tips */}
         <div className="card" style={{ marginBottom: 24 }}>
           <h3 style={{ marginBottom: 16 }}>Water-Saving Tips</h3>
           <ul style={{ paddingLeft: 18, fontSize: 14, color: "#334155", lineHeight: 2, columns: 2, columnGap: 32 }}>
@@ -128,15 +175,23 @@ export default function ResidentDashboard() {
           </ul>
         </div>
 
+        {/* Historical Invoice Ledger Table */}
         <div className="card">
           <h3 style={{ marginBottom: 16 }}>Invoice History</h3>
           {invoices.length === 0 ? (
-            <p style={{ color: "#4b5f63", fontSize: 14 }}>No invoices yet — they'll appear here once your admin finalizes a billing cycle.</p>
+            <p style={{ color: "#4b5f63", fontSize: 14 }}>
+              No invoices yet — they'll appear here once your admin finalizes a billing cycle.
+            </p>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Date</th><th>Consumption (kL)</th><th>Base Charge</th><th>Shared Allocation</th><th>Total</th><th></th>
+                  <th>Date</th>
+                  <th>Consumption (kL)</th>
+                  <th>Base Charge</th>
+                  <th>Shared Allocation</th>
+                  <th>Total</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -148,26 +203,13 @@ export default function ResidentDashboard() {
                     <td>Rs. {inv.sharedAllocation}</td>
                     <td><strong>Rs. {inv.total}</strong></td>
                     <td>
-                      <a
+                      <button
                         className="btn btn-outline btn-sm"
-                        href={`${axiosClient.defaults.baseURL}/resident/invoices/${inv.id}/pdf`}
-                        target="_blank" rel="noreferrer"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          axiosClient.get(`/resident/invoices/${inv.id}/pdf`, { responseType: "blob" })
-                            .then((res) => {
-                              const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-                              const link = document.createElement("a");
-                              link.href = url;
-                              link.setAttribute("download", `invoice-${inv.id}.pdf`);
-                              document.body.appendChild(link);
-                              link.click();
-                              link.remove();
-                            });
-                        }}
+                        disabled={downloadingId === inv.id}
+                        onClick={() => handleDownloadPdf(inv.id)}
                       >
-                        Download PDF
-                      </a>
+                        {downloadingId === inv.id ? "Downloading..." : "Download PDF"}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -175,6 +217,7 @@ export default function ResidentDashboard() {
             </table>
           )}
         </div>
+
       </div>
     </div>
   );

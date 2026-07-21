@@ -459,6 +459,7 @@ function TariffTab({ apartmentId }) {
   const [plans, setPlans] = useState([]);
   const [form, setForm] = useState({ planName: "", baseRate: "", baseTierLimitKl: "", excessRate: "" });
   const [message, setMessage] = useState("");
+  const [error, setError] = useState(""); // Add error state tracking
 
   const load = useCallback(() => {
     axiosClient.get(`/admin/tariff-plans/apartment/${apartmentId}`).then((r) => setPlans(r.data)).catch(() => {});
@@ -468,15 +469,23 @@ function TariffTab({ apartmentId }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    await axiosClient.post("/admin/tariff-plans", {
-      apartmentId, ...form,
-      baseRate: Number(form.baseRate),
-      baseTierLimitKl: Number(form.baseTierLimitKl),
-      excessRate: Number(form.excessRate),
-    });
-    setMessage("Tariff plan created and set as active.");
-    setForm({ planName: "", baseRate: "", baseTierLimitKl: "", excessRate: "" });
-    load();
+    setError(""); 
+    setMessage("");
+    
+    try {
+      await axiosClient.post("/admin/tariff-plans", {
+        apartmentId, ...form,
+        baseRate: Number(form.baseRate),
+        baseTierLimitKl: Number(form.baseTierLimitKl),
+        excessRate: Number(form.excessRate),
+      });
+      setMessage("Tariff plan created and set as active.");
+      setForm({ planName: "", baseRate: "", baseTierLimitKl: "", excessRate: "" });
+      load();
+    } catch (err) {
+      // Safely read the exact message coming back from the backend logic
+      setError(err.response?.data?.message || "Could not save tariff plan. Please verify the input values.");
+    }
   };
 
   return (
@@ -484,6 +493,7 @@ function TariffTab({ apartmentId }) {
       <div className="card">
         <h3 style={{ marginBottom: 16 }}>New Tariff Plan</h3>
         {message && <div className="success-banner">{message}</div>}
+        {error && <div className="alert-banner">{error}</div>} {/* Render error banner here */}
         <form onSubmit={submit}>
           <div className="form-group"><label>Plan Name</label>
             <input value={form.planName} onChange={(e) => setForm({ ...form, planName: e.target.value })} required /></div>

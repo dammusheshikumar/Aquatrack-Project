@@ -17,11 +17,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  
   const { login, googleLogin, googleRegister } = useAuth();
   const navigate = useNavigate();
 
-  // Google sign-in state: when a Google account is verified but no resident
-  // record exists yet, we hold the pending token and ask for apartment + flat.
+  // Google sign-in workflow states
   const [pendingGoogle, setPendingGoogle] = useState(null); // { idToken, email, fullName }
   const [apartments, setApartments] = useState([]);
   const [googleApartmentId, setGoogleApartmentId] = useState("");
@@ -29,31 +29,55 @@ export default function LoginPage() {
   const [googleError, setGoogleError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Fetch apartments safely when role is RESIDENT
   useEffect(() => {
+    let isMounted = true;
     if (role === "RESIDENT") {
-      axiosClient.get("/public/apartments").then((res) => setApartments(res.data)).catch(() => {});
+      axiosClient
+        .get("/public/apartments")
+        .then((res) => {
+          if (isMounted) setApartments(res.data);
+        })
+        .catch((err) => console.error("Failed to fetch apartments:", err));
     }
+    return () => { isMounted = false; };
   }, [role]);
 
+  // Clean state variables when flipping between tabs
+  const handleRoleChange = (newRole) => {
+    setRole(newRole);
+    setPendingGoogle(null);
+    setGoogleError("");
+    setError("");
+  };
+
+  // Traditional Form Authentication Handling
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+    
     try {
       const data = await login(username, password);
+      
+      // FIX: Guard clause blocks unexpected navigation when roles don't match
       if (data.role !== role) {
-        setError(`This account is registered as ${data.role}, not ${role}. Redirecting to the correct dashboard.`);
+        setError(`This account is registered as ${data.role}, not ${role}. Please check your selection.`);
+        setLoading(false);
+        return; 
       }
+      
       navigate(data.role === "ADMIN" ? "/admin" : "/resident");
     } catch (err) {
       setError(err.response?.data?.message || "Invalid username or password.");
-    } finally {
       setLoading(false);
     }
   };
 
+  // Google Sign-In Initial Catch Flow
   const handleGoogleCredential = async (idToken) => {
     setGoogleError("");
+    setError("");
     setPendingGoogle(null);
 
     try {
@@ -69,23 +93,16 @@ export default function LoginPage() {
         });
       }
     } catch (err) {
-      console.error("========== GOOGLE LOGIN ERROR ==========");
-      console.error(err);
-
-      if (err.response) {
-        console.error("Status:", err.response.status);
-        console.error("Data:", err.response.data);
-      }
-
+      console.error("========== GOOGLE LOGIN ERROR ==========", err);
       setGoogleError(
         err.response?.data?.message ||
-        JSON.stringify(err.response?.data) ||
         err.message ||
         "Google sign-in failed."
       );
     }
   };
 
+  // Final Step for Google Accounts lacking Flat/Unit assignments
   const completeGoogleRegistration = async (e) => {
     e.preventDefault();
     if (!googleApartmentId || !googleFlatNumber) {
@@ -108,6 +125,7 @@ export default function LoginPage() {
     <div>
       <Navbar />
       <div className="auth-shell">
+        {/* Left Side Branding Display */}
         <div className="auth-brand-panel">
           <div className="ripple-rings" aria-hidden="true" style={{ top: "8%", left: "8%" }}>
             <span></span><span></span><span></span>
@@ -131,55 +149,61 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* Right Side Form Interaction Space */}
         <div className="auth-form-panel">
           <div className="auth-form-card">
             <h1 className="page-title">Log in</h1>
             <p className="page-subtitle">Choose your role, then sign in to your dashboard.</p>
 
+            {/* Role Toggle Tabs */}
             <div className="role-toggle">
               <div
                 className={`role-toggle-btn ${role === "RESIDENT" ? "active" : ""}`}
-                onClick={() => { setRole("RESIDENT"); setPendingGoogle(null); setGoogleError(""); }}
+                onClick={() => handleRoleChange("RESIDENT")}
               >
                 Resident
               </div>
               <div
                 className={`role-toggle-btn ${role === "ADMIN" ? "active" : ""}`}
-                onClick={() => { setRole("ADMIN"); setPendingGoogle(null); setGoogleError(""); }}
+                onClick={() => handleRoleChange("ADMIN")}
               >
                 Apartment Admin
               </div>
             </div>
 
-            {error && <div className="alert-banner">{error}</div>}
-
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label>Username</label>
-                <input value={username} onChange={(e) => setUsername(e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label>Password</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-              </div>
-              <button className="btn btn-primary btn-block" disabled={loading}>
-                {loading ? "Signing in..." : `Log in as ${role === "ADMIN" ? "Admin" : "Resident"}`}
-              </button>
-            </form>
-
-            {/* Google sign-in is resident-only — never shown for the admin role */}
-            {role === "RESIDENT" && !pendingGoogle && (
+            {/* Conditional Sub-View Manager */}
+            {!pendingGoogle ? (
               <>
-                <div className="auth-divider"><span>or</span></div>
-                {googleError && <div className="alert-banner">{googleError}</div>}
-                <GoogleSignInButton
-                  onCredential={handleGoogleCredential}
-                  onError={setGoogleError}
-                />
-              </>
-            )}
+                {error && <div className="alert-banner">{error}</div>}
 
-            {role === "RESIDENT" && pendingGoogle && (
+                <form onSubmit={handleSubmit}>
+                  <div className="form-group">
+                    <label>Username</label>
+                    <input value={username} onChange={(e) => setUsername(e.target.value)} required />
+                  </div>
+                  <div className="form-group">
+                    <label>Password</label>
+                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  </div>
+                  <button className="btn btn-primary btn-block" disabled={loading}>
+                    {loading ? "Signing in..." : `Log in as ${role === "ADMIN" ? "Admin" : "Resident"}`}
+                  </button>
+                </form>
+
+                {/* Third-Party Integrations Group (Resident Only) */}
+                {role === "RESIDENT" && (
+                  <>
+                    <div className="auth-divider"><span>or</span></div>
+                    {googleError && <div className="alert-banner">{googleError}</div>}
+                    <GoogleSignInButton
+                      onCredential={handleGoogleCredential}
+                      onError={setGoogleError}
+                    />
+                  </>
+                )}
+              </>
+            ) : (
+              /* Google Metadata Registration Fallback Screen */
               <div className="google-complete-box">
                 <p style={{ fontSize: 13.5, color: "var(--text)", marginBottom: 14 }}>
                   No resident account found for <strong>{pendingGoogle.email}</strong> yet.

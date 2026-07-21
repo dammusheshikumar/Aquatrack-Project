@@ -18,6 +18,17 @@ axiosClient.interceptors.request.use((config) => {
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // --- START DEBUG LOGGING ---
+    console.error("--- AXIOS INTERCEPTOR ERROR DIAGNOSTICS ---");
+    if (error.response) {
+      console.error("Status Code:", error.response.status);
+      console.error("Server Error Data Payload:", error.response.data);
+    } else {
+      console.error("Error Message:", error.message);
+    }
+    console.error("-------------------------------------------");
+    // --- END DEBUG LOGGING ---
+
     if (error.response && error.response.status === 401) {
       localStorage.removeItem("aquatrack_token");
       localStorage.removeItem("aquatrack_user");
