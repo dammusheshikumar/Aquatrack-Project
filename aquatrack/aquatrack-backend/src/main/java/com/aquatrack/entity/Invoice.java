@@ -1,9 +1,12 @@
 package com.aquatrack.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "invoices", uniqueConstraints = @UniqueConstraint(columnNames = {"billing_cycle_id", "household_id"}))
@@ -41,11 +44,14 @@ public class Invoice {
     @Column(name = "pdf_path")
     private String pdfPath;
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<InvoiceAdjustment> adjustmentHistory = new ArrayList<>();
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
-    void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
+    void prePersist() { createdAt = LocalDateTime.now(); }
 }

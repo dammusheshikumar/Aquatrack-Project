@@ -1,5 +1,6 @@
 package com.aquatrack.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -27,6 +28,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
+    @JsonIgnore
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
@@ -42,6 +44,15 @@ public class User {
     @Builder.Default
     private AuthProvider authProvider = AuthProvider.LOCAL;
 
+    /**
+     * RESIDENT accounts start PENDING and cannot log in until an admin
+     * approves them. ADMIN accounts are always created APPROVED.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status", nullable = false, length = 20)
+    @Builder.Default
+    private ApprovalStatus approvalStatus = ApprovalStatus.APPROVED;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean enabled = true;
@@ -50,7 +61,5 @@ public class User {
     private LocalDateTime createdAt;
 
     @PrePersist
-    void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
+    void prePersist() { createdAt = LocalDateTime.now(); }
 }

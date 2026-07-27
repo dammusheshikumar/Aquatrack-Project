@@ -5,9 +5,6 @@ import lombok.Data;
 
 @Data
 public class ApartmentRequest {
-    @NotBlank
-    private String name;
-
-    @NotBlank
-    private String address;
+    @NotBlank private String name;
+    @NotBlank private String address;
 }

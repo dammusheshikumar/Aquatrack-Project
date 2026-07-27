@@ -37,13 +37,8 @@ public class Apartment {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
+    void prePersist() { createdAt = LocalDateTime.now(); updatedAt = LocalDateTime.now(); }
 
     @PreUpdate
-    void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
+    void preUpdate() { updatedAt = LocalDateTime.now(); }
 }

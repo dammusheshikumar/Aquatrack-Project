@@ -1,5 +1,3 @@
 package com.aquatrack.entity;
 
-public enum BillingCycleStatus {
-    OPEN, FINALIZED, ARCHIVED
-}
+public enum BillingCycleStatus { OPEN, FINALIZED, ARCHIVED }

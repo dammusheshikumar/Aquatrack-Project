@@ -21,63 +21,34 @@ export default function ResidentDashboard() {
   const [usage, setUsage] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [fines, setFines] = useState([]);
   const [peer, setPeer] = useState(null);
-  const [downloadingId, setDownloadingId] = useState(null);
 
-  // Load all dashboard metrics concurrently
   const loadAll = useCallback(async () => {
     if (!householdId) return;
     try {
-      const [usageRes, invoiceRes, alertRes, peerRes] = await Promise.all([
+      const [usageRes, invoiceRes, alertRes, peerRes, fineRes] = await Promise.all([
         axiosClient.get(`/resident/households/${householdId}/usage-logs`),
         axiosClient.get(`/resident/households/${householdId}/invoices`),
         axiosClient.get(`/resident/households/${householdId}/alerts`),
         axiosClient.get(`/resident/households/${householdId}/peer-comparison`),
+        axiosClient.get(`/resident/households/${householdId}/fines`),
       ]);
       setUsage(usageRes.data);
       setInvoices(invoiceRes.data);
       setAlerts(alertRes.data);
       setPeer(peerRes.data);
+      setFines(fineRes.data);
     } catch (e) {
-      console.error("Dashboard failed to fill completely:", e);
+      // dashboard renders with whatever loaded
     }
   }, [householdId]);
 
-  useEffect(() => {
-    loadAll();
-  }, [loadAll]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
-  // Handle authenticated secure file downloads via blob transformation
-  const handleDownloadPdf = async (invoiceId) => {
-    setDownloadingId(invoiceId);
-    try {
-      const res = await axiosClient.get(`/resident/invoices/${invoiceId}/pdf`, { 
-        responseType: "blob" 
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `invoice-${invoiceId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      
-      // Cleanup DOM node & object URL reference memory
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Could not download invoice PDF:", err);
-      alert("Failed to download invoice PDF. Please try again later.");
-    } finally {
-      setDownloadingId(null);
-    }
-  };
-
-  // Memoized Chart formatting
-  const chartData = usage.map((u) => ({
-    date: u.readingDate,
-    consumption: Number(u.consumptionKl || 0),
-  }));
+  const chartData = usage.map((u) => ({ date: u.readingDate, consumption: Number(u.consumptionKl || 0) }));
+  const activeAlerts = alerts.filter((a) => !a.resolved);
+  const unpaidFines = fines.filter((f) => f.status === "UNPAID");
 
   const peerChartData = peer ? [
     { label: "You", value: peer.myConsumptionKl },
@@ -85,62 +56,70 @@ export default function ResidentDashboard() {
     { label: "Similar-sized Avg", value: peer.similarSizedAverageKl },
   ] : [];
 
-  const activeAlerts = alerts.filter(a => !a.resolved);
+  const severityBadge = (severity) => {
+    if (severity === "CRITICAL") return "badge-danger";
+    if (severity === "WARNING") return "badge-warning";
+    return "badge-info";
+  };
+
+  const downloadInvoice = (invId) => {
+    axiosClient.get(`/resident/invoices/${invId}/pdf`, { responseType: "blob" }).then((res) => {
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `invoice-${invId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+  };
 
   return (
     <div>
       <Navbar />
       <div className="container" style={{ paddingTop: 32, paddingBottom: 48 }}>
-        
-        {/* Dashboard Header */}
-        <div className="dash-header" style={{ marginBottom: 24 }}>
+        <div className="dash-header">
           <div>
             <h1 className="page-title">Welcome back, {user?.fullName}</h1>
-            <p className="page-subtitle" style={{ marginBottom: 0 }}>
-              Your household's water consumption, billing, and alerts.
-            </p>
+            <p className="page-subtitle" style={{ marginBottom: 0 }}>Your household's water consumption, billing, and alerts.</p>
           </div>
         </div>
 
-        {/* Statistical Overview Cards */}
-        <div className="grid grid-3" style={{ marginBottom: 24 }}>
+        <div className="grid grid-4" style={{ marginBottom: 24 }}>
           <div className="card stat-card">
             <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>💧 Latest reading</div>
-            <div className="stat-value">
-              {chartData.length ? chartData[chartData.length - 1].consumption.toFixed(2) : "0.00"} kL
-            </div>
+            <div className="stat-value">{chartData.length ? chartData[chartData.length - 1].consumption.toFixed(2) : "0.00"} kL</div>
             <div className="stat-label">Consumption on last logged day</div>
           </div>
-          
           <div className="card stat-card">
             <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>🧾 Most recent bill</div>
             <div className="stat-value">{invoices.length ? `Rs. ${invoices[0].total}` : "—"}</div>
             <div className="stat-label">From your latest finalized invoice</div>
           </div>
-          
           <div className="card stat-card">
             <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>🔔 Active alerts</div>
             <div className="stat-value">{activeAlerts.length}</div>
-            <div className="stat-label">Overuse or leak signals needing attention</div>
+            <div className="stat-label">Overuse, leak, or limit signals</div>
+          </div>
+          <div className="card stat-card" style={{ borderTopColor: unpaidFines.length ? "var(--danger)" : "var(--primary)" }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>⚠️ Unpaid fines</div>
+            <div className="stat-value">{unpaidFines.length ? `Rs. ${unpaidFines.reduce((s, f) => s + Number(f.amount), 0).toFixed(2)}` : "Rs. 0"}</div>
+            <div className="stat-label">{unpaidFines.length} outstanding</div>
           </div>
         </div>
 
-        {/* Dynamic Critical Action Banners */}
         {activeAlerts.length > 0 && (
-          <div className="alert-banner" style={{ marginBottom: 24 }}>
-            {activeAlerts.slice(0, 3).map((a) => (
-              <div key={a.id} style={{ marginBottom: 4 }}>⚠ {a.message}</div>
-            ))}
+          <div className="alert-banner">
+            {activeAlerts.slice(0, 3).map((a) => <div key={a.id} style={{ marginBottom: 4 }}>⚠ {a.message}</div>)}
           </div>
         )}
 
-        {/* Charts Section */}
         <div className="grid grid-2" style={{ marginBottom: 24 }}>
           <div className="card">
             <h3 style={{ marginBottom: 16 }}>Daily Consumption Trend</h3>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#dfeceb" />
                 <XAxis dataKey="date" fontSize={11} />
                 <YAxis fontSize={11} label={{ value: "kL", angle: -90, position: "insideLeft", fontSize: 11 }} />
                 <Tooltip />
@@ -154,46 +133,72 @@ export default function ResidentDashboard() {
             {peer ? (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={peerChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#dfeceb" />
                   <XAxis dataKey="label" fontSize={11} />
                   <YAxis fontSize={11} />
                   <Tooltip />
                   <Bar dataKey="value" fill="#f4b942" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            ) : (
-              <p style={{ color: "#4b5f63", fontSize: 13 }}>Not enough data yet.</p>
-            )}
+            ) : <p style={{ color: "#4b5f63", fontSize: 13 }}>Not enough data yet.</p>}
           </div>
         </div>
 
-        {/* Water-Saving Tips */}
-        <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ marginBottom: 16 }}>Water-Saving Tips</h3>
-          <ul style={{ paddingLeft: 18, fontSize: 14, color: "#334155", lineHeight: 2, columns: 2, columnGap: 32 }}>
-            {TIPS.map((t, i) => <li key={i}>{t}</li>)}
-          </ul>
+        <div className="grid grid-2" style={{ marginBottom: 24 }}>
+          <div className="card">
+            <h3 style={{ marginBottom: 16 }}>Alerts for Your Household</h3>
+            {alerts.length === 0 ? (
+              <p style={{ color: "#4b5f63", fontSize: 14 }}>No alerts yet — nothing unusual detected.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {alerts.slice(0, 6).map((a) => (
+                  <div key={a.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", paddingBottom: 10, borderBottom: "1px solid var(--border)" }}>
+                    <span className={`badge ${severityBadge(a.severity)}`}>{a.resolved ? "Resolved" : a.severity}</span>
+                    <span style={{ fontSize: 13, color: "#334155" }}>{a.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="card">
+            <h3 style={{ marginBottom: 16 }}>Water-Saving Tips</h3>
+            <ul style={{ paddingLeft: 18, fontSize: 14, color: "#334155", lineHeight: 2 }}>
+              {TIPS.map((t, i) => <li key={i}>{t}</li>)}
+            </ul>
+          </div>
         </div>
 
-        {/* Historical Invoice Ledger Table */}
+        {fines.length > 0 && (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <h3 style={{ marginBottom: 16 }}>Fines</h3>
+            <table>
+              <thead><tr><th>Date</th><th>Reason</th><th>Amount</th><th>Status</th></tr></thead>
+              <tbody>
+                {fines.map((f) => (
+                  <tr key={f.id}>
+                    <td>{new Date(f.createdAt).toLocaleDateString()}</td>
+                    <td style={{ fontSize: 13 }}>{f.reason}</td>
+                    <td>Rs. {f.amount}</td>
+                    <td>
+                      <span className={`badge ${f.status === "UNPAID" ? "badge-danger" : f.status === "PAID" ? "badge-success" : "badge-info"}`}>
+                        {f.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <div className="card">
           <h3 style={{ marginBottom: 16 }}>Invoice History</h3>
           {invoices.length === 0 ? (
-            <p style={{ color: "#4b5f63", fontSize: 14 }}>
-              No invoices yet — they'll appear here once your admin finalizes a billing cycle.
-            </p>
+            <p style={{ color: "#4b5f63", fontSize: 14 }}>No invoices yet — they'll appear here once your admin finalizes a billing cycle.</p>
           ) : (
             <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Consumption (kL)</th>
-                  <th>Base Charge</th>
-                  <th>Shared Allocation</th>
-                  <th>Total</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Date</th><th>Consumption (kL)</th><th>Base Charge</th><th>Shared Allocation</th><th>Adjustments</th><th>Total</th><th></th></tr></thead>
               <tbody>
                 {invoices.map((inv) => (
                   <tr key={inv.id}>
@@ -201,14 +206,11 @@ export default function ResidentDashboard() {
                     <td>{inv.consumptionKl}</td>
                     <td>Rs. {inv.baseCharge}</td>
                     <td>Rs. {inv.sharedAllocation}</td>
+                    <td>Rs. {inv.adjustments}</td>
                     <td><strong>Rs. {inv.total}</strong></td>
                     <td>
-                      <button
-                        className="btn btn-outline btn-sm"
-                        disabled={downloadingId === inv.id}
-                        onClick={() => handleDownloadPdf(inv.id)}
-                      >
-                        {downloadingId === inv.id ? "Downloading..." : "Download PDF"}
+                      <button className="btn btn-outline btn-sm" onClick={() => downloadInvoice(inv.id)}>
+                        Download PDF
                       </button>
                     </td>
                   </tr>
@@ -216,8 +218,10 @@ export default function ResidentDashboard() {
               </tbody>
             </table>
           )}
+          <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 12 }}>
+            Your invoice PDF is also emailed to you automatically the moment a billing cycle is finalized.
+          </p>
         </div>
-
       </div>
     </div>
   );

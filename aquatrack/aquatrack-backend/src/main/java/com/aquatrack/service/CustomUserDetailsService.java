@@ -24,6 +24,10 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
+        // Note: approval gating (PENDING/REJECTED) is enforced explicitly in
+        // AuthService/GoogleAuthService after password verification, with a
+        // friendly message — not via Spring Security's disabled flag, so we
+        // can distinguish "wrong password" from "not approved yet" cleanly.
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPasswordHash())

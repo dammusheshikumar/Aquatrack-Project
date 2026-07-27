@@ -1,14 +1,19 @@
 package com.aquatrack.service;
 
 import com.aquatrack.dto.tariff.TariffPlanRequest;
+import com.aquatrack.dto.tariff.TariffTierRequest;
 import com.aquatrack.entity.Apartment;
 import com.aquatrack.entity.TariffPlan;
+import com.aquatrack.entity.TariffTier;
+import com.aquatrack.exception.BadRequestException;
 import com.aquatrack.repository.ApartmentRepository;
 import com.aquatrack.repository.TariffPlanRepository;
 import com.aquatrack.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -25,97 +30,72 @@ public class TariffService {
     @Transactional
     public TariffPlan createPlan(TariffPlanRequest req) {
         Apartment apartment = apartmentRepository.findById(req.getApartmentId())
-                .orElseThrow(() -> new ResourceNotFoundException("Apartment not found with ID: " + req.getApartmentId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Apartment not found"));
 
-        // Fix: Throw 409 Conflict / BadRequest equivalent instead of NotFound
-        if (tariffPlanRepository.existsByApartmentIdAndPlanNameIgnoreCase(apartment.getId(), req.getPlanName())) {
-            throw new IllegalArgumentException("Tariff plan with name '" + req.getPlanName() + "' already exists for this apartment.");
-        }
-
-        // Deactivate old active plan if it exists
-        tariffPlanRepository.findByApartmentIdAndActiveTrue(apartment.getId())
-                .ifPresent(existing -> existing.setActive(false));
+        validateTiers(req.getTiers());
 
         TariffPlan plan = TariffPlan.builder()
                 .apartment(apartment)
                 .planName(req.getPlanName())
-                .baseRate(req.getBaseRate())
-                .baseTierLimitKl(req.getBaseTierLimitKl())
-                .excessRate(req.getExcessRate())
                 .active(true)
                 .build();
 
-        // Save new plan to generate ID
+        List<TariffTier> tiers = new ArrayList<>();
+        int order = 1;
+        for (TariffTierRequest tierReq : req.getTiers()) {
+            tiers.add(TariffTier.builder()
+                    .tariffPlan(plan)
+                    .tierOrder(order++)
+                    .upToKl(tierReq.getUpToKl())
+                    .rate(tierReq.getRate())
+                    .build());
+        }
+        plan.setTiers(tiers);
+
         plan = tariffPlanRepository.save(plan);
 
-        // Update apartment association (dirty checking handles the save automatically at transaction commit)
         apartment.setActiveTariffPlanId(plan.getId());
+        apartmentRepository.save(apartment);
 
         return plan;
     }
 
-    @Transactional(readOnly = true)
     public List<TariffPlan> listPlans(Long apartmentId) {
         return tariffPlanRepository.findByApartmentIdOrderByCreatedAtDesc(apartmentId);
     }
 
-    @Transactional
-    public TariffPlan activatePlan(Long apartmentId, Long tariffId) {
-        // 1. Verify apartment exists
-        Apartment apartment = apartmentRepository.findById(apartmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Apartment not found with ID: " + apartmentId));
-
-        // 2. Fetch target tariff plan early
-        TariffPlan newPlan = tariffPlanRepository.findById(tariffId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tariff plan not found with ID: " + tariffId));
-
-        // 3. Security/Data integrity check: Does this plan belong to this apartment?
-        if (!newPlan.getApartment().getId().equals(apartmentId)) {
-            throw new IllegalArgumentException("Tariff plan does not belong to the specified apartment.");
-        }
-
-        // 4. If already active, short-circuit immediately before making mutations
-        if (Boolean.TRUE.equals(newPlan.getActive())) {
-            return newPlan;
-        }
-
-        // 5. Deactivate current active plan safely
-        tariffPlanRepository.findByApartmentIdAndActiveTrue(apartmentId)
-                .ifPresent(plan -> plan.setActive(false));
-
-        // 6. Activate new plan & update apartment tracking
-        newPlan.setActive(true);
-        apartment.setActiveTariffPlanId(newPlan.getId());
-
-        // Note: Explicit repository.save() calls omitted because Spring/JPA 
-        // dirty checking automatically flushes updates at the end of @Transactional methods.
-        return newPlan;
-    }
-
-    public BigDecimal calculateCharge(BigDecimal consumptionKl, TariffPlan tariff) {
-        if (consumptionKl == null || consumptionKl.compareTo(BigDecimal.ZERO) <= 0) {
-            return BigDecimal.ZERO;
-        }
-
-        // Tier 1: Consumption is within or equal to base limit
-        if (consumptionKl.compareTo(tariff.getBaseTierLimitKl()) <= 0) {
-            return consumptionKl.multiply(tariff.getBaseRate());
-        }
-
-        // Tier 2: Consumption exceeds base limit
-        BigDecimal baseCharge = tariff.getBaseTierLimitKl().multiply(tariff.getBaseRate());
-        BigDecimal excessConsumption = consumptionKl.subtract(tariff.getBaseTierLimitKl());
-        BigDecimal excessCharge = excessConsumption.multiply(tariff.getExcessRate());
-
-        return baseCharge.add(excessCharge);
-    }
-
-    @Transactional(readOnly = true)
     public TariffPlan getActivePlan(Apartment apartment) {
         if (apartment.getActiveTariffPlanId() == null) {
-            throw new ResourceNotFoundException("No active tariff plan configured for the apartment selected");
+            throw new ResourceNotFoundException("No active tariff plan configured for apartment " + apartment.getId());
         }
         return tariffPlanRepository.findById(apartment.getActiveTariffPlanId())
                 .orElseThrow(() -> new ResourceNotFoundException("Active tariff plan not found"));
+    }
+
+    /**
+     * Ensures a tier list unambiguously covers every possible consumption
+     * value: boundaries must strictly increase, and only the last tier may
+     * be open-ended (upToKl == null). Without this, a plan could either
+     * leave a gap in coverage or define an unreachable tier.
+     */
+    private void validateTiers(List<TariffTierRequest> tiers) {
+        BigDecimal previousLimit = BigDecimal.ZERO;
+        for (int i = 0; i < tiers.size(); i++) {
+            TariffTierRequest tier = tiers.get(i);
+            boolean isLast = i == tiers.size() - 1;
+
+            if (tier.getUpToKl() == null) {
+                if (!isLast) {
+                    throw new BadRequestException(
+                            "Only the last tariff tier may be left open-ended (no upper limit). Tier " + (i + 1) + " must specify \"up to\" a consumption value.");
+                }
+            } else {
+                if (tier.getUpToKl().compareTo(previousLimit) <= 0) {
+                    throw new BadRequestException(
+                            "Tier " + (i + 1) + "'s \"up to\" value (" + tier.getUpToKl() + " kL) must be greater than the previous tier's limit (" + previousLimit + " kL).");
+                }
+                previousLimit = tier.getUpToKl();
+            }
+        }
     }
 }

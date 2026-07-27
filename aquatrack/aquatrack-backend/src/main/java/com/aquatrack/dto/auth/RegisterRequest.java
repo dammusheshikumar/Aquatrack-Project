@@ -6,17 +6,13 @@ import lombok.Data;
 
 @Data
 public class RegisterRequest {
-
-    @NotBlank
-    @Size(min = 4, max = 60)
+    @NotBlank @Size(min = 4, max = 60)
     private String username;
 
-    @NotBlank
-    @Email
+    @NotBlank @Email
     private String email;
 
-    @NotBlank
-    @Size(min = 6)
+    @NotBlank @Size(min = 6)
     private String password;
 
     @NotBlank
@@ -26,6 +22,5 @@ public class RegisterRequest {
     private Role role;
 
     private Long apartmentId;
-
     private Long householdId;
 }

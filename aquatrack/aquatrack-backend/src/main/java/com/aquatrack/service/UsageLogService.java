@@ -22,9 +22,11 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Handles manual and bulk (CSV) water usage log ingestion.
- * Duplicate detection: one reading per household per day (DB unique constraint
- * + pre-check) so the same reading/file row can never be double-counted.
+ * Handles meter usage log ingestion. Both manual entry and bulk CSV upload
+ * are admin-only operations (residents no longer self-report readings).
+ * Duplicate detection: one reading per household per day (DB unique
+ * constraint + pre-check) so the same reading/file row can never be
+ * double-counted.
  */
 @Service
 public class UsageLogService {
@@ -70,7 +72,7 @@ public class UsageLogService {
         List<String> errors = new ArrayList<>();
 
         try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
-            String[] header = reader.readNext(); // skip header row
+            reader.readNext(); // skip header row
             String[] row;
             int rowNum = 1;
             while ((row = reader.readNext()) != null) {

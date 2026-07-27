@@ -13,7 +13,6 @@ export default function GoogleSignInButton({ onCredential, onError }) {
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
-
     let cancelled = false;
 
     const render = () => {
@@ -24,12 +23,7 @@ export default function GoogleSignInButton({ onCredential, onError }) {
           callback: (response) => onCredential(response.credential),
         });
         window.google.accounts.id.renderButton(buttonRef.current, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          shape: "pill",
-          width: 320,
-          text: "continue_with",
+          type: "standard", theme: "outline", size: "large", shape: "pill", width: 320, text: "continue_with",
         });
       } catch (e) {
         onError && onError("Could not load Google sign-in.");
@@ -39,27 +33,18 @@ export default function GoogleSignInButton({ onCredential, onError }) {
     if (window.google) {
       render();
     } else {
-      // The GIS script is loaded async in index.html — poll briefly until it's ready.
       const interval = setInterval(() => {
-        if (window.google) {
-          clearInterval(interval);
-          render();
-        }
+        if (window.google) { clearInterval(interval); render(); }
       }, 200);
       const timeout = setTimeout(() => clearInterval(interval), 6000);
       return () => { cancelled = true; clearInterval(interval); clearTimeout(timeout); };
     }
-
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!GOOGLE_CLIENT_ID) {
-    return (
-      <p style={{ fontSize: 12, color: "var(--text-muted)" }}>
-        Google sign-in isn't configured (missing REACT_APP_GOOGLE_CLIENT_ID).
-      </p>
-    );
+    return <p style={{ fontSize: 12, color: "var(--text-muted)" }}>Google sign-in isn't configured (missing REACT_APP_GOOGLE_CLIENT_ID).</p>;
   }
 
   return <div ref={buttonRef} style={{ display: "flex", justifyContent: "center" }} />;

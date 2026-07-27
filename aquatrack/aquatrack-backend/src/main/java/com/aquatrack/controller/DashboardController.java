@@ -11,11 +11,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
 
-/**
- * Aggregated read endpoints for the React dashboards: all-household usage
- * comparison for the admin panel, and peer-benchmarking comparison for
- * residents (own usage vs apartment average / similar-sized households).
- */
 @RestController
 @RequestMapping("/api")
 public class DashboardController {

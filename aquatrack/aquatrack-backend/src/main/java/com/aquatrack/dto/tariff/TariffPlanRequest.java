@@ -1,26 +1,17 @@
 package com.aquatrack.dto.tariff;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class TariffPlanRequest {
-    @NotNull
-    private Long apartmentId;
+    @NotNull private Long apartmentId;
+    @NotBlank private String planName;
 
-    @NotBlank
-    private String planName;
-
-    @NotNull
-    @Positive
-    private BigDecimal baseRate;
-
-    @NotNull
-    @Positive
-    private BigDecimal baseTierLimitKl;
-
-    @NotNull
-    @Positive
-    private BigDecimal excessRate;
+    @NotEmpty @Valid
+    private List<TariffTierRequest> tiers;
 }

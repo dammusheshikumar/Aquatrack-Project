@@ -6,12 +6,7 @@ import java.time.LocalDate;
 
 @Data
 public class BillingCycleRequest {
-    @NotNull
-    private Long apartmentId;
-
-    @NotNull
-    private LocalDate startDate;
-
-    @NotNull
-    private LocalDate endDate;
+    @NotNull private Long apartmentId;
+    @NotNull private LocalDate startDate;
+    @NotNull private LocalDate endDate;
 }

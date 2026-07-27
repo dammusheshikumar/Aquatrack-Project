@@ -9,7 +9,6 @@ import com.aquatrack.repository.HouseholdRepository;
 import com.aquatrack.repository.WaterUsageLogRepository;
 import com.aquatrack.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

@@ -11,7 +11,6 @@ import com.aquatrack.exception.ResourceNotFoundException;
 import com.aquatrack.repository.ApartmentRepository;
 import com.aquatrack.repository.HouseholdRepository;
 import com.aquatrack.repository.UserRepository;
-import com.aquatrack.security.CustomUserDetails;
 import com.aquatrack.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;

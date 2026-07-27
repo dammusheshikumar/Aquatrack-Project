@@ -13,12 +13,20 @@ import java.math.RoundingMode;
 import java.util.List;
 
 /**
- * Alert engine. Two detection strategies, run by the scheduler:
- *  1. Threshold breach: today's usage vs a configurable % of the household's
+ * Alert engine. Three detection strategies, run by the scheduler (and
+ * on-demand by an admin):
+ *  1. Absolute daily-limit breach: today's usage vs a household's configured
+ *     cap (or, if unset, no check is performed for that household).
+ *  2. Relative overuse: today's usage vs a configurable % of the household's
  *     recent average ("overuse-threshold-percent").
- *  2. Statistical anomaly: usage more than 2 standard deviations (2 sigma)
- *     above the household's historical average — a simple, concrete
- *     first exposure to statistical outlier detection for leak indication.
+ *  3. Statistical anomaly (leak): usage more than 2 standard deviations
+ *     (2 sigma) above the household's historical average.
+ *
+ * Every alert raised is also visible to the resident's dashboard (via
+ * AlertController) and triggers an email. To avoid spamming a household
+ * with duplicate emails every time the scheduler runs, a given alert type
+ * is only raised again once the previous open alert of that type has been
+ * resolved.
  */
 @Service
 public class AlertService {
@@ -53,40 +61,46 @@ public class AlertService {
     @Transactional
     public void checkHousehold(Household household) {
         List<WaterUsageLog> recent = usageLogRepository.findTop30ByHouseholdIdOrderByReadingDateDesc(household.getId());
-        if (recent.size() < 5) {
-            return; // not enough history for a meaningful baseline
+        if (recent.isEmpty()) return;
+
+        BigDecimal latest = recent.get(0).getConsumptionKl();
+        if (latest == null) return;
+
+        // 1. Absolute daily-limit check — works from the very first reading, doesn't need history.
+        if (household.getDailyLimitKl() != null && latest.compareTo(household.getDailyLimitKl()) > 0) {
+            raiseAlertIfNotAlreadyOpen(household, AlertType.DAILY_LIMIT_EXCEEDED, AlertSeverity.CRITICAL,
+                    "Today's usage (" + latest + " kL) exceeded this household's daily limit of " +
+                    household.getDailyLimitKl() + " kL. Please check for open taps or ongoing appliance use.");
         }
+
+        if (recent.size() < 5) return; // not enough history for the two statistical checks below
 
         List<BigDecimal> consumptions = recent.stream()
                 .map(WaterUsageLog::getConsumptionKl)
                 .filter(java.util.Objects::nonNull)
                 .toList();
-
         if (consumptions.size() < 5) return;
 
-        BigDecimal latest = consumptions.get(0);
         List<BigDecimal> history = consumptions.subList(1, consumptions.size());
-
         BigDecimal mean = average(history);
         BigDecimal stdDev = standardDeviation(history, mean);
 
-        // 1. Threshold overuse check
+        // 2. Relative overuse check
         if (mean.compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal ratio = latest.divide(mean, 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
+            BigDecimal ratio = latest.divide(mean, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
             if (ratio.doubleValue() >= overuseThresholdPercent) {
-                raiseAlert(household, AlertType.OVERUSE, AlertSeverity.WARNING,
+                raiseAlertIfNotAlreadyOpen(household, AlertType.OVERUSE, AlertSeverity.WARNING,
                         "Latest usage (" + latest + " kL) is " + ratio.setScale(0, RoundingMode.HALF_UP) +
                         "% of the household's recent average (" + mean.setScale(2, RoundingMode.HALF_UP) + " kL). " +
                         "Consider checking taps and fixtures for leaks.");
             }
         }
 
-        // 2. Statistical anomaly (2-sigma) leak detection
+        // 3. Statistical anomaly (2-sigma) leak detection
         if (stdDev.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal threshold = mean.add(stdDev.multiply(BigDecimal.valueOf(stdDevMultiplier)));
             if (latest.compareTo(threshold) > 0) {
-                raiseAlert(household, AlertType.ANOMALY_LEAK, AlertSeverity.CRITICAL,
+                raiseAlertIfNotAlreadyOpen(household, AlertType.ANOMALY_LEAK, AlertSeverity.CRITICAL,
                         "Latest usage (" + latest + " kL) is more than " + stdDevMultiplier +
                         " standard deviations above this household's average (" + mean.setScale(2, RoundingMode.HALF_UP) +
                         " kL, std dev " + stdDev.setScale(2, RoundingMode.HALF_UP) + " kL). This pattern often indicates a leak.");
@@ -94,7 +108,16 @@ public class AlertService {
         }
     }
 
-    private void raiseAlert(Household household, AlertType type, AlertSeverity severity, String message) {
+    /**
+     * Avoids re-raising (and re-emailing) the same alert type every time the
+     * scheduler runs while a household's issue is still unresolved — only
+     * raises a fresh alert once the prior one of that type has been marked
+     * resolved by an admin.
+     */
+    private void raiseAlertIfNotAlreadyOpen(Household household, AlertType type, AlertSeverity severity, String message) {
+        if (alertRepository.existsByHouseholdIdAndAlertTypeAndResolvedFalse(household.getId(), type)) {
+            return;
+        }
         Alert alert = Alert.builder()
                 .household(household)
                 .alertType(type)

@@ -3,6 +3,7 @@ package com.aquatrack.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -27,6 +28,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Object> handleBadCredentials(BadCredentialsException ex) {
         return build(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<Object> handleDisabled(DisabledException ex) {
+        return build(HttpStatus.FORBIDDEN, "This account is disabled. Contact your apartment admin.");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

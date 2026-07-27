@@ -22,21 +22,16 @@ export default function Navbar() {
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           {user ? (
             <>
-              <div
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  background: "var(--bg)", border: "1px solid var(--border)",
-                  borderRadius: 999, padding: "4px 12px 4px 4px",
-                }}
-              >
-                <span
-                  style={{
-                    width: 26, height: 26, borderRadius: "50%",
-                    background: "var(--primary)", color: "#fff",
-                    fontSize: 11, fontWeight: 700,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}
-                >
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8,
+                background: "var(--bg)", border: "1px solid var(--border)",
+                borderRadius: 999, padding: "4px 12px 4px 4px",
+              }}>
+                <span style={{
+                  width: 26, height: 26, borderRadius: "50%",
+                  background: "var(--primary)", color: "#fff", fontSize: 11, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
                   {initials}
                 </span>
                 <span style={{ fontSize: 13, color: "var(--text-muted)" }}>

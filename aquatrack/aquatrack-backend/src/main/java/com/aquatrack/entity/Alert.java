@@ -37,7 +37,5 @@ public class Alert {
     private LocalDateTime createdAt;
 
     @PrePersist
-    void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
+    void prePersist() { createdAt = LocalDateTime.now(); }
 }

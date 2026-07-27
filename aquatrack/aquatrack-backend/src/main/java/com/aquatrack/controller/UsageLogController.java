@@ -11,6 +11,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+/**
+ * Meter reading ingestion. Both manual entry and CSV bulk upload are
+ * admin-only: residents view their own usage but no longer self-report
+ * readings, so all mutating endpoints here live under /admin/**.
+ */
 @RestController
 @RequestMapping("/api")
 public class UsageLogController {
@@ -21,7 +26,7 @@ public class UsageLogController {
         this.usageLogService = usageLogService;
     }
 
-    @PostMapping("/resident/usage-logs")
+    @PostMapping("/admin/usage-logs")
     public ResponseEntity<WaterUsageLog> logReading(@Valid @RequestBody UsageLogRequest req) {
         return ResponseEntity.ok(usageLogService.logManualReading(req));
     }

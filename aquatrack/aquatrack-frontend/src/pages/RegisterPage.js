@@ -5,203 +5,168 @@ import axiosClient from "../api/axiosClient";
 import Navbar from "../components/Navbar";
 import GoogleSignInButton from "../components/GoogleSignInButton";
 
-const BRAND_POINTS = [
-  { icon: "💧", text: "See daily consumption trends the moment you log a reading." },
-  { icon: "🧾", text: "Download every past invoice as a PDF, whenever you need it." },
-  { icon: "🔔", text: "Get emailed the moment a leak or overuse pattern shows up." },
+const RESIDENT_POINTS = [
+  { icon: "📊", text: "Track your household's daily consumption in one dashboard." },
+  { icon: "⚖️", text: "See how your usage compares to similar-sized flats." },
+];
+const ADMIN_POINTS = [
+  { icon: "🏢", text: "Onboard your apartment, register flats, and configure tariffs." },
+  { icon: "🧾", text: "Run billing cycles and generate invoices for every household." },
 ];
 
 export default function RegisterPage() {
-  // Standard Registration Form States
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [apartmentId, setApartmentId] = useState("");
-  const [flatNumber, setFlatNumber] = useState("");
+  const [role, setRole] = useState("RESIDENT");
+  const [apartments, setApartments] = useState([]);
+  const [form, setForm] = useState({ username: "", email: "", password: "", fullName: "", apartmentId: "", flatNumber: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState("");
+  const { register, googleLogin, googleRegister } = useAuth();
+  const navigate = useNavigate();
 
-  // Google Registration intercepted States
-  const [pendingGoogle, setPendingGoogle] = useState(null); // Holds { idToken, email, fullName }
+  const [pendingGoogle, setPendingGoogle] = useState(null);
   const [googleApartmentId, setGoogleApartmentId] = useState("");
   const [googleFlatNumber, setGoogleFlatNumber] = useState("");
   const [googleError, setGoogleError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Shared Apartment Data List
-  const [apartments, setApartments] = useState([]);
-
-  const { register, googleLogin, googleRegister } = useAuth();
-  const navigate = useNavigate();
-
-  // Always fetch apartments list for registrations
   useEffect(() => {
-    let isMounted = true;
-    axiosClient
-      .get("/public/apartments")
-      .then((res) => {
-        if (isMounted) setApartments(res.data);
-      })
-      .catch((err) => console.error("Failed to load apartments:", err));
-
-    return () => { isMounted = false; };
+    axiosClient.get("/public/apartments").then((res) => setApartments(res.data)).catch(() => {});
   }, []);
 
-  // 1. Traditional Email/Password Form Submit
-  const handleTraditionalRegister = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await register(username, email, password, apartmentId, flatNumber);
-      navigate("/resident");
-    } catch (err) {
-      setError(err.response?.data?.message || "Registration failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
-  // 2. Step 1 of Google Flow: Check if account exists, or intercept to request unit details
   const handleGoogleCredential = async (idToken) => {
     setGoogleError("");
-    setError("");
-    setPendingGoogle(null);
-
     try {
-      // Re-use the googleLogin check logic to see if they're already registered
       const result = await googleLogin(idToken);
-
-      if (result.accountExists) {
-        // If they already exist, seamlessly log them in instead of double-registering
+      if (result.accountExists && result.pendingApproval) {
+        setGoogleError("Your account is registered but still pending admin approval. You'll get an email once it's approved.");
+      } else if (result.accountExists) {
         navigate("/resident");
       } else {
-        // Intercept standard page view, open the completion sub-form
-        setPendingGoogle({
-          idToken,
-          email: result.googleEmail,
-          fullName: result.googleFullName,
-        });
+        setPendingGoogle({ idToken, email: result.googleEmail, fullName: result.googleFullName });
       }
     } catch (err) {
-      console.error("========== GOOGLE REGISTRATION INTERCEPT ERROR ==========", err);
-      setGoogleError(
-        err.response?.data?.message ||
-        err.message ||
-        "Google sign-in configuration failed."
-      );
+      setGoogleError(err.response?.data?.message || "Google sign-in failed. Please try again.");
     }
   };
 
-  // 3. Step 2 of Google Flow: Submitting unit info to save data to the backend
   const completeGoogleRegistration = async (e) => {
     e.preventDefault();
     if (!googleApartmentId || !googleFlatNumber) {
-      setGoogleError("Please select your apartment and enter your flat number.");
+      setGoogleError("Select your apartment and enter your flat number.");
       return;
     }
     setGoogleError("");
     setGoogleLoading(true);
     try {
-      await googleRegister(pendingGoogle.idToken, googleApartmentId, googleFlatNumber);
-      navigate("/resident");
+      const message = await googleRegister(pendingGoogle.idToken, googleApartmentId, googleFlatNumber);
+      setPendingGoogle(null);
+      setPendingMessage(message);
     } catch (err) {
-      setGoogleError(err.response?.data?.message || "Could not complete your Google registration.");
+      setGoogleError(err.response?.data?.message || "Could not complete your registration.");
     } finally {
       setGoogleLoading(false);
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(""); setPendingMessage("");
+    setLoading(true);
+    try {
+      let payload = { username: form.username, email: form.email, password: form.password, fullName: form.fullName, role };
+
+      if (role === "ADMIN") {
+        payload.apartmentId = form.apartmentId || null;
+      } else {
+        if (!form.apartmentId || !form.flatNumber) {
+          throw { response: { data: { message: "Select an apartment and enter your flat number." } } };
+        }
+        const lookup = await axiosClient.get(
+          `/public/apartments/${form.apartmentId}/households/lookup`,
+          { params: { flatNumber: form.flatNumber } }
+        );
+        payload.householdId = lookup.data.id;
+      }
+
+      const data = await register(payload);
+      if (data.pendingApproval) {
+        setPendingMessage(data.message);
+      } else if (data.auth) {
+        navigate(data.auth.role === "ADMIN" ? "/admin" : "/resident");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Registration failed. Please check your details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const points = role === "ADMIN" ? ADMIN_POINTS : RESIDENT_POINTS;
+
   return (
     <div>
       <Navbar />
       <div className="auth-shell">
-        {/* Left Side Branding Panel */}
         <div className="auth-brand-panel">
-          <div className="ripple-rings" aria-hidden="true" style={{ top: "8%", left: "8%" }}>
-            <span></span><span></span><span></span>
-          </div>
+          <div className="ripple-rings" aria-hidden="true" style={{ top: "8%", left: "8%" }}><span></span><span></span><span></span></div>
           <div className="auth-brand-inner">
             <div className="auth-brand-mark">💧 AquaTrack</div>
             <h2 className="auth-brand-headline">
-              Join us for <em>clearer water tracking.</em>
+              {role === "ADMIN" ? <>Run your building's <em>whole billing cycle.</em></> : <>Know exactly what <em>you're paying for.</em></>}
             </h2>
             <p className="auth-brand-copy">
-              Create your account to track consumption, view invoices, and instantly identify home leaks.
+              {role === "ADMIN"
+                ? "Onboard your apartment, configure tariffs, and bill every flat fairly in a few clicks."
+                : "See your consumption, your bill, and your peer comparison — all in one place."}
             </p>
             <div className="auth-brand-list">
-              {BRAND_POINTS.map((p) => (
-                <div key={p.text} className="auth-brand-list-item">
-                  <span className="auth-brand-list-icon">{p.icon}</span>
-                  <span>{p.text}</span>
-                </div>
+              {points.map((p) => (
+                <div key={p.text} className="auth-brand-list-item"><span className="auth-brand-list-icon">{p.icon}</span><span>{p.text}</span></div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Right Side Form Panel */}
         <div className="auth-form-panel">
           <div className="auth-form-card">
-            <h1 className="page-title">Create Account</h1>
-            <p className="page-subtitle">Register as a new resident to monitor your unit.</p>
+            <h1 className="page-title">Create your account</h1>
+            <p className="page-subtitle">
+              {role === "ADMIN"
+                ? "Admins manage tariffs, billing cycles, and meter uploads for an apartment."
+                : "Residents track their own usage, bills, and alerts. Your flat must already be registered by your admin. New resident accounts need admin approval before you can log in."}
+            </p>
 
-            {/* CASE A: Show Regular Form (If no Google button step is pending) */}
-            {!pendingGoogle && (
+            <div className="role-toggle">
+              <div className={`role-toggle-btn ${role === "RESIDENT" ? "active" : ""}`} onClick={() => { setRole("RESIDENT"); setPendingMessage(""); setPendingGoogle(null); setGoogleError(""); }}>Resident</div>
+              <div className={`role-toggle-btn ${role === "ADMIN" ? "active" : ""}`} onClick={() => { setRole("ADMIN"); setPendingMessage(""); setPendingGoogle(null); setGoogleError(""); }}>Apartment Admin</div>
+            </div>
+
+            {error && <div className="alert-banner">{error}</div>}
+            {pendingMessage && <div className="success-banner">{pendingMessage}</div>}
+
+            {/* Google sign-up is resident-only — never shown for the admin role */}
+            {role === "RESIDENT" && !pendingGoogle && !pendingMessage && (
               <>
-                {error && <div className="alert-banner">{error}</div>}
-                
-                <form onSubmit={handleTraditionalRegister}>
-                  <div className="form-group">
-                    <label>Username</label>
-                    <input value={username} onChange={(e) => setUsername(e.target.value)} required />
-                  </div>
-                  <div className="form-group">
-                    <label>Email Address</label>
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-                  </div>
-                  <div className="form-group">
-                    <label>Password</label>
-                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-                  </div>
-                  <div className="form-group">
-                    <label>Apartment Complex</label>
-                    <select value={apartmentId} onChange={(e) => setApartmentId(e.target.value)} required>
-                      <option value="">Select apartment</option>
-                      {apartments.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Flat Number</label>
-                    <input value={flatNumber} onChange={(e) => setFlatNumber(e.target.value)} placeholder="e.g. B-102" required />
-                  </div>
-                  <button className="btn btn-primary btn-block" disabled={loading}>
-                    {loading ? "Registering..." : "Sign Up"}
-                  </button>
-                </form>
-
-                {/* The "Continue with Google" Section */}
-                <div className="auth-divider"><span>or</span></div>
+                <div className="auth-divider"><span>Get started</span></div>
                 {googleError && <div className="alert-banner">{googleError}</div>}
-                <GoogleSignInButton
-                  onCredential={handleGoogleCredential}
-                  onError={setGoogleError}
-                />
+                <GoogleSignInButton onCredential={handleGoogleCredential} onError={setGoogleError} />
+                <div className="auth-divider"><span>or register manually</span></div>
               </>
             )}
 
-            {/* CASE B: Show Step-2 Google Completion Sub-Form */}
-            {pendingGoogle && (
+            {role === "RESIDENT" && pendingGoogle && (
               <div className="google-complete-box">
                 <p style={{ fontSize: 13.5, color: "var(--text)", marginBottom: 14 }}>
-                  Setting up your account via Google email: <strong>{pendingGoogle.email}</strong>. 
-                  Please select your apartment building information to complete registration.
+                  No resident account found for <strong>{pendingGoogle.email}</strong> yet.
+                  Select your apartment and flat number to submit it for admin approval.
                 </p>
                 {googleError && <div className="alert-banner">{googleError}</div>}
-                
                 <form onSubmit={completeGoogleRegistration}>
                   <div className="form-group">
-                    <label>Apartment Complex</label>
+                    <label>Apartment</label>
                     <select value={googleApartmentId} onChange={(e) => setGoogleApartmentId(e.target.value)} required>
                       <option value="">Select apartment</option>
                       {apartments.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -212,23 +177,50 @@ export default function RegisterPage() {
                     <input value={googleFlatNumber} onChange={(e) => setGoogleFlatNumber(e.target.value)} placeholder="e.g. A-204" required />
                   </div>
                   <button className="btn btn-primary btn-block" disabled={googleLoading}>
-                    {googleLoading ? "Completing Setup..." : "Complete Registration"}
+                    {googleLoading ? "Submitting..." : "Submit for approval"}
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-block"
-                    style={{ marginTop: 8 }}
-                    onClick={() => setPendingGoogle(null)}
-                  >
-                    Cancel Google Registration
+                  <button type="button" className="btn btn-outline btn-block" style={{ marginTop: 8 }} onClick={() => { setPendingGoogle(null); setGoogleApartmentId(""); setGoogleFlatNumber(""); }}>
+                    Cancel
                   </button>
                 </form>
               </div>
             )}
 
-            <p style={{ marginTop: 16, fontSize: 13, color: "var(--text-muted)", textAlign: "center" }}>
-              Already have an account? <Link to="/login" style={{ color: "var(--primary)", fontWeight: 600 }}>Log in here</Link>
-            </p>
+            {!pendingMessage && !pendingGoogle && (
+              <form onSubmit={handleSubmit}>
+                <div className="grid grid-2" style={{ gap: 16 }}>
+                  <div className="form-group"><label>Full name</label><input value={form.fullName} onChange={update("fullName")} required /></div>
+                  <div className="form-group"><label>Username</label><input value={form.username} onChange={update("username")} required /></div>
+                </div>
+                <div className="form-group"><label>Email</label><input type="email" value={form.email} onChange={update("email")} required /></div>
+                <div className="form-group"><label>Password</label><input type="password" minLength={6} value={form.password} onChange={update("password")} required /></div>
+
+                <div className="form-group">
+                  <label>Apartment {role === "ADMIN" ? "(optional if creating a new one later)" : ""}</label>
+                  <select value={form.apartmentId} onChange={update("apartmentId")} required={role === "RESIDENT"}>
+                    <option value="">Select apartment</option>
+                    {apartments.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+
+                {role === "RESIDENT" && (
+                  <div className="form-group">
+                    <label>Flat number</label>
+                    <input value={form.flatNumber} onChange={update("flatNumber")} placeholder="e.g. A-204" required />
+                  </div>
+                )}
+
+                <button className="btn btn-primary btn-block" disabled={loading}>
+                  {loading ? "Submitting..." : "Register"}
+                </button>
+              </form>
+            )}
+
+            {!pendingMessage && (
+              <p style={{ marginTop: 16, fontSize: 13, color: "var(--text-muted)", textAlign: "center" }}>
+                Already have an account? <Link to="/login" style={{ color: "var(--primary)", fontWeight: 600 }}>Log in</Link>
+              </p>
+            )}
           </div>
         </div>
       </div>

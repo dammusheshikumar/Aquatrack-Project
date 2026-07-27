@@ -6,19 +6,13 @@ import java.math.BigDecimal;
 
 @Data
 public class HouseholdRequest {
-    @NotNull
-    private Long apartmentId;
-
-    @NotBlank
-    private String flatNumber;
-
-    @NotNull
-    @Positive
-    private BigDecimal flatSizeSqft;
-
-    @NotNull
-    @Positive
-    private Integer occupancy;
-
+    @NotNull private Long apartmentId;
+    @NotBlank private String flatNumber;
+    @NotNull @Positive private BigDecimal flatSizeSqft;
+    @NotNull @Positive private Integer occupancy;
     private String meterSerialNumber;
+
+    /** Optional absolute per-day usage limit (kL) for the daily-limit alert check. */
+    @Positive
+    private BigDecimal dailyLimitKl;
 }

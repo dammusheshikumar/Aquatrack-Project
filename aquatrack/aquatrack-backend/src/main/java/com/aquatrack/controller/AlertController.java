@@ -22,6 +22,7 @@ public class AlertController {
         return ResponseEntity.ok(alertService.getActiveAlertsForApartment(apartmentId));
     }
 
+    /** Powers the resident dashboard's alert banner and alert feed. */
     @GetMapping("/resident/households/{householdId}/alerts")
     public ResponseEntity<List<Alert>> forHousehold(@PathVariable Long householdId) {
         return ResponseEntity.ok(alertService.getAlertsForHousehold(householdId));

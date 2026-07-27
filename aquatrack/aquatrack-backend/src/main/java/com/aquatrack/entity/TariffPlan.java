@@ -2,8 +2,9 @@ package com.aquatrack.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "tariff_plans")
@@ -21,14 +22,10 @@ public class TariffPlan {
     @Column(name = "plan_name", nullable = false, length = 100)
     private String planName;
 
-    @Column(name = "base_rate", nullable = false, precision = 10, scale = 4)
-    private BigDecimal baseRate;
-
-    @Column(name = "base_tier_limit_kl", nullable = false, precision = 10, scale = 2)
-    private BigDecimal baseTierLimitKl;
-
-    @Column(name = "excess_rate", nullable = false, precision = 10, scale = 4)
-    private BigDecimal excessRate;
+    @OneToMany(mappedBy = "tariffPlan", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OrderBy("tierOrder ASC")
+    @Builder.Default
+    private List<TariffTier> tiers = new ArrayList<>();
 
     @Column(nullable = false)
     @Builder.Default
@@ -38,7 +35,5 @@ public class TariffPlan {
     private LocalDateTime createdAt;
 
     @PrePersist
-    void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
+    void prePersist() { createdAt = LocalDateTime.now(); }
 }

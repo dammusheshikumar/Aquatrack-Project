@@ -1,11 +1,6 @@
 package com.aquatrack.controller;
 
-import com.aquatrack.dto.auth.AuthResponse;
-import com.aquatrack.dto.auth.GoogleAuthResponse;
-import com.aquatrack.dto.auth.GoogleLoginRequest;
-import com.aquatrack.dto.auth.GoogleRegisterRequest;
-import com.aquatrack.dto.auth.LoginRequest;
-import com.aquatrack.dto.auth.RegisterRequest;
+import com.aquatrack.dto.auth.*;
 import com.aquatrack.service.AuthService;
 import com.aquatrack.service.GoogleAuthService;
 import jakarta.validation.Valid;
@@ -25,7 +20,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest req) {
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest req) {
         return ResponseEntity.ok(authService.register(req));
     }
 
@@ -35,10 +30,12 @@ public class AuthController {
     }
 
     /**
-     * Resident-only Google sign-in. If a resident account already exists for
-     * the verified Google email, logs in immediately. Otherwise returns
-     * accountExists=false with the Google email/name so the frontend can
-     * collect apartment + flat number and call /auth/google/register.
+     * Resident-only Google sign-in. If an approved resident account exists
+     * for the verified Google email, logs in immediately. If the account
+     * exists but is still pending admin approval, pendingApproval=true is
+     * returned with no token. If no account exists, accountExists=false is
+     * returned with the Google email/name so the frontend can collect
+     * apartment + flat number and call /auth/google/register.
      */
     @PostMapping("/google/login")
     public ResponseEntity<GoogleAuthResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest req) {
@@ -46,7 +43,7 @@ public class AuthController {
     }
 
     @PostMapping("/google/register")
-    public ResponseEntity<AuthResponse> googleRegister(@Valid @RequestBody GoogleRegisterRequest req) {
+    public ResponseEntity<String> googleRegister(@Valid @RequestBody GoogleRegisterRequest req) {
         return ResponseEntity.ok(googleAuthService.register(req));
     }
 }

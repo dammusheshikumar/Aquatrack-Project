@@ -22,24 +22,28 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  /**
+   * Returns the RegisterResponse: { pendingApproval, message, auth }.
+   * Only logs the user in immediately if no approval was required (admins).
+   */
   const register = async (payload) => {
     const res = await axiosClient.post("/auth/register", payload);
     const data = res.data;
-    persistSession(data);
-    setUser(data);
+    if (!data.pendingApproval && data.auth) {
+      persistSession(data.auth);
+      setUser(data.auth);
+    }
     return data;
   };
 
   /**
    * Sends the Google ID token (from Google Identity Services) to the backend.
-   * If a matching resident account exists, logs in and returns { accountExists: true }.
-   * Otherwise returns { accountExists: false, googleEmail, googleFullName } so the
-   * caller can collect apartment + flat number and call googleRegister().
+   * Returns { accountExists, pendingApproval, auth, googleEmail, googleFullName }.
    */
   const googleLogin = async (idToken) => {
     const res = await axiosClient.post("/auth/google/login", { idToken });
     const data = res.data;
-    if (data.accountExists) {
+    if (data.accountExists && !data.pendingApproval && data.auth) {
       persistSession(data.auth);
       setUser(data.auth);
     }
@@ -48,10 +52,7 @@ export function AuthProvider({ children }) {
 
   const googleRegister = async (idToken, apartmentId, flatNumber) => {
     const res = await axiosClient.post("/auth/google/register", { idToken, apartmentId, flatNumber });
-    const data = res.data;
-    persistSession(data);
-    setUser(data);
-    return data;
+    return res.data; // a pending-approval message string; no session yet
   };
 
   const logout = () => {

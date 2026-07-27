@@ -1,7 +1,10 @@
 package com.aquatrack.repository;
 
+import com.aquatrack.entity.ApprovalStatus;
+import com.aquatrack.entity.Role;
 import com.aquatrack.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -9,4 +12,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
+    List<User> findByHouseholdId(Long householdId);
+    List<User> findByHousehold_Apartment_IdAndRoleAndApprovalStatus(Long apartmentId, Role role, ApprovalStatus status);
+    List<User> findByHousehold_Apartment_IdAndRole(Long apartmentId, Role role);
 }

@@ -7,13 +7,7 @@ import java.time.LocalDate;
 
 @Data
 public class UsageLogRequest {
-    @NotNull
-    private Long householdId;
-
-    @NotNull
-    private LocalDate readingDate;
-
-    @NotNull
-    @PositiveOrZero
-    private BigDecimal readingValue;
+    @NotNull private Long householdId;
+    @NotNull private LocalDate readingDate;
+    @NotNull @PositiveOrZero private BigDecimal readingValue;
 }

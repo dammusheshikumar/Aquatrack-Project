@@ -4,6 +4,7 @@ import com.aquatrack.config.JwtUtil;
 import com.aquatrack.dto.auth.AuthResponse;
 import com.aquatrack.dto.auth.GoogleAuthResponse;
 import com.aquatrack.dto.auth.GoogleRegisterRequest;
+import com.aquatrack.entity.ApprovalStatus;
 import com.aquatrack.entity.AuthProvider;
 import com.aquatrack.entity.Household;
 import com.aquatrack.entity.Role;
@@ -28,10 +29,8 @@ import java.util.UUID;
 /**
  * Handles "Sign in with Google" for residents only. Admins never authenticate
  * via Google — a Google email that matches an ADMIN account is rejected.
- *
- * The frontend uses Google Identity Services to obtain an ID token client-side;
- * this service verifies that token's signature and audience against Google's
- * public keys before trusting any claim inside it.
+ * New Google residents go through the same PENDING-approval gate as
+ * password-registered residents.
  */
 @Service
 public class GoogleAuthService {
@@ -40,15 +39,17 @@ public class GoogleAuthService {
     private final HouseholdRepository householdRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final EmailService emailService;
     private final GoogleIdTokenVerifier verifier;
 
     public GoogleAuthService(UserRepository userRepository, HouseholdRepository householdRepository,
-                              PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
+                              PasswordEncoder passwordEncoder, JwtUtil jwtUtil, EmailService emailService,
                               @Value("${aquatrack.google.client-id}") String googleClientId) {
         this.userRepository = userRepository;
         this.householdRepository = householdRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.emailService = emailService;
         this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
                 .setAudience(Collections.singletonList(googleClientId))
                 .build();
@@ -66,13 +67,16 @@ public class GoogleAuthService {
                         throw new BadRequestException(
                                 "This email is registered as an apartment admin. Google sign-in is available for residents only.");
                     }
-                    return new GoogleAuthResponse(true, issueAuth(user), null, null);
+                    if (user.getApprovalStatus() != ApprovalStatus.APPROVED) {
+                        return new GoogleAuthResponse(true, true, null, null, null);
+                    }
+                    return new GoogleAuthResponse(true, false, issueAuth(user), null, null);
                 })
-                .orElseGet(() -> new GoogleAuthResponse(false, null, email, fullName));
+                .orElseGet(() -> new GoogleAuthResponse(false, false, null, email, fullName));
     }
 
     @Transactional
-    public AuthResponse register(GoogleRegisterRequest req) {
+    public String register(GoogleRegisterRequest req) {
         GoogleIdToken.Payload payload = verify(req.getIdToken());
         String email = payload.getEmail();
         String fullName = (String) payload.get("name");
@@ -96,12 +100,14 @@ public class GoogleAuthService {
                 .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString()))
                 .role(Role.RESIDENT)
                 .authProvider(AuthProvider.GOOGLE)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .household(household)
                 .enabled(true)
                 .build();
 
         User saved = userRepository.save(user);
-        return issueAuth(saved);
+        emailService.sendRegistrationPendingEmail(saved);
+        return "Your registration has been submitted. An apartment admin needs to approve your account before you can log in — you'll get an email once that happens.";
     }
 
     private GoogleIdToken.Payload verify(String idToken) {

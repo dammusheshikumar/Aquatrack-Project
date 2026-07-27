@@ -37,6 +37,10 @@ public class Household {
     @Builder.Default
     private Boolean meterActive = true;
 
+    /** Optional absolute per-day usage cap (kL) that triggers a DAILY_LIMIT_EXCEEDED alert. */
+    @Column(name = "daily_limit_kl", precision = 10, scale = 3)
+    private BigDecimal dailyLimitKl;
+
     @JsonIgnore
     @OneToMany(mappedBy = "household", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -49,13 +53,8 @@ public class Household {
     private LocalDateTime updatedAt;
 
     @PrePersist
-    void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
+    void prePersist() { createdAt = LocalDateTime.now(); updatedAt = LocalDateTime.now(); }
 
     @PreUpdate
-    void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
+    void preUpdate() { updatedAt = LocalDateTime.now(); }
 }
