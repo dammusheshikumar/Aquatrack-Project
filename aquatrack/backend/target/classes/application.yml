@@ -47,7 +47,7 @@ app:
     secret: ${JWT_SECRET:aquatrack-super-secret-signing-key-please-change-me-in-prod-0123456789}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}   # 24 hours
   cors:
-    allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5000}
   alerts:
     overuse-threshold-multiplier: 1.5   # flag if daily usage > 1.5x household's rolling average
     anomaly-std-dev-multiplier: 2.0     # 2-sigma leak detection rule

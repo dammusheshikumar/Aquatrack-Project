@@ -52,7 +52,7 @@ aquatrack:
     anomaly-std-dev-multiplier: 2
     scheduler-cron: "0 0 7 * * *"
   cors:
-    allowed-origins: http://localhost:3000
+    allowed-origins: http://localhost:5000
   google:
     client-id: 205083517140-l221jnmohmpeiqgop4lgclj9ctr70oeb.apps.googleusercontent.com
 

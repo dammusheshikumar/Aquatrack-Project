@@ -79,7 +79,7 @@ API: `http://localhost:8080`. Swagger UI: `http://localhost:8080/swagger-ui.html
 
 **Email:** for Gmail, use an [App Password](https://myaccount.google.com/apppasswords) (a regular password won't work with 2FA). Any SMTP provider works — just change `MAIL_HOST`/`MAIL_PORT`.
 
-**Google Sign-In:** create an OAuth 2.0 Client ID at the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (type: Web application), add `http://localhost:3000` as an authorized JavaScript origin, and set `GOOGLE_CLIENT_ID`. The backend calls out to Google at runtime to verify tokens, so it needs outbound internet access.
+**Google Sign-In:** create an OAuth 2.0 Client ID at the [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (type: Web application), add `http://localhost:5000` as an authorized JavaScript origin, and set `GOOGLE_CLIENT_ID`. The backend calls out to Google at runtime to verify tokens, so it needs outbound internet access.
 
 ### 3.3 Frontend
 
@@ -90,7 +90,7 @@ cp .env.example .env       # set REACT_APP_GOOGLE_CLIENT_ID too
 npm start
 ```
 
-Runs on `http://localhost:3000`.
+Runs on `http://localhost:5000`.
 
 ## 4. Typical workflow
 
