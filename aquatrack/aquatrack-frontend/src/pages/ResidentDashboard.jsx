@@ -12,6 +12,19 @@ const TIPS_ICONS = ['🚿', '🚰', '🌿', '🫙', '🧺']
 
 const severityVariant = (s) => (s === 'CRITICAL' ? 'danger' : s === 'WARNING' ? 'warning' : 'info')
 
+const extractArray = (resData) => {
+  if (Array.isArray(resData)) return resData
+  if (resData && typeof resData === 'object') {
+    if (Array.isArray(resData.content)) return resData.content
+    if (Array.isArray(resData.data)) return resData.data
+    if (Array.isArray(resData.logs)) return resData.logs
+    if (Array.isArray(resData.invoices)) return resData.invoices
+    if (Array.isArray(resData.alerts)) return resData.alerts
+    if (Array.isArray(resData.fines)) return resData.fines
+  }
+  return []
+}
+
 export default function ResidentDashboard() {
   const { user } = useAuth()
   const { t } = useTranslation()
@@ -31,18 +44,23 @@ export default function ResidentDashboard() {
     setLoading(true)
     try {
       const [usageRes, invoiceRes, alertRes, peerRes, fineRes] = await Promise.all([
-        axiosClient.get(`/resident/households/${householdId}/usage-logs/recent`),
-        axiosClient.get(`/resident/households/${householdId}/invoices`),
-        axiosClient.get(`/resident/households/${householdId}/alerts`),
-        axiosClient.get(`/resident/households/${householdId}/peer-comparison`),
-        axiosClient.get(`/resident/households/${householdId}/fines`),
+        axiosClient.get(`/resident/households/${householdId}/usage-logs/recent`).catch(() => ({ data: [] })),
+        axiosClient.get(`/resident/households/${householdId}/invoices`).catch(() => ({ data: [] })),
+        axiosClient.get(`/resident/households/${householdId}/alerts`).catch(() => ({ data: [] })),
+        axiosClient.get(`/resident/households/${householdId}/peer-comparison`).catch(() => ({ data: null })),
+        axiosClient.get(`/resident/households/${householdId}/fines`).catch(() => ({ data: [] })),
       ])
+      const usageArr = extractArray(usageRes.data)
+      const invArr = extractArray(invoiceRes.data)
+      const alertArr = extractArray(alertRes.data)
+      const fineArr = extractArray(fineRes.data)
+
       // recent usage-logs come back newest-first; reverse for a left-to-right trend chart
-      setUsage([...usageRes.data].reverse())
-      setInvoices(invoiceRes.data)
-      setAlerts(alertRes.data)
-      setPeer(peerRes.data)
-      setFines(fineRes.data)
+      setUsage([...usageArr].reverse())
+      setInvoices(invArr)
+      setAlerts(alertArr)
+      setPeer(peerRes.data || null)
+      setFines(fineArr)
     } catch (e) {
       // dashboard renders with whatever loaded
     } finally {
@@ -52,11 +70,11 @@ export default function ResidentDashboard() {
 
   useEffect(() => { loadAll() }, [loadAll])
 
-  const activeAlerts = alerts.filter(a => !a.resolved)
-  const unpaidFines = fines.filter(f => f.status === 'UNPAID')
-  const unpaidFineTotal = unpaidFines.reduce((s, f) => s + Number(f.amount), 0)
-  const latestConsumption = usage.length ? Number(usage[usage.length - 1].consumptionKl || 0) : 0
-  const mostRecentBill = invoices.length ? Number(invoices[0].total) : 0
+  const activeAlerts = alerts.filter(a => a.resolved !== true && a.resolved !== 'true')
+  const unpaidFines = fines.filter(f => String(f.status || '').toUpperCase() === 'UNPAID')
+  const unpaidFineTotal = unpaidFines.reduce((s, f) => s + Number(f.amount || 0), 0)
+  const latestConsumption = usage.length ? Number(usage[usage.length - 1].consumptionKl ?? usage[usage.length - 1].readingValue ?? 0) : 0
+  const mostRecentBill = invoices.length ? Number(invoices[0].total ?? invoices[0].totalAmount ?? 0) : 0
 
   const consumptionData = usage.map(u => ({ date: u.readingDate, kL: Number(u.consumptionKl || 0) }))
   const comparisonData = peer ? [

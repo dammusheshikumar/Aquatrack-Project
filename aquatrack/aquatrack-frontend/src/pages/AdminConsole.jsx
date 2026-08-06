@@ -20,11 +20,12 @@ const extractArray = (resData) => {
     if (Array.isArray(resData.data)) return resData.data
     if (Array.isArray(resData.households)) return resData.households
     if (Array.isArray(resData.alerts)) return resData.alerts
+    if (Array.isArray(resData.pending)) return resData.pending
+    if (Array.isArray(resData.residents)) return resData.residents
   }
   return []
 }
 
-/* ── Overview ──────────────────────────────────────────────────────────────── */
 /* ── Overview ──────────────────────────────────────────────────────────────── */
 function OverviewTab({ apartmentId }) {
   const { t } = useTranslation()
@@ -34,34 +35,24 @@ function OverviewTab({ apartmentId }) {
   const [comparison, setComparison] = useState([])
   const [pending, setPending] = useState(0)
 
-  // Safe array extractor helper
-  const toArray = (resData) => {
-    if (Array.isArray(resData)) return resData
-    if (resData && typeof resData === 'object') {
-      if (Array.isArray(resData.content)) return resData.content
-      if (Array.isArray(resData.data)) return resData.data
-    }
-    return []
-  }
-
   useEffect(() => {
     if (!apartmentId) return
 
     setLoading(true)
     Promise.all([
-      // Fetch /households/detail (uses HouseholdDetailResponse which serializes cleanly)
-      axiosClient.get(`/admin/apartments/${apartmentId}/households/detail`).catch(() => ({ data: [] })),
+      axiosClient.get(`/admin/apartments/${apartmentId}/households`)
+        .catch(() => axiosClient.get(`/admin/apartments/${apartmentId}/households/detail`))
+        .catch(() => ({ data: [] })),
       axiosClient.get(`/admin/apartments/${apartmentId}/alerts`).catch(() => ({ data: [] })),
       axiosClient.get(`/admin/apartments/${apartmentId}/usage-comparison`).catch(() => ({ data: [] })),
       axiosClient.get(`/admin/apartments/${apartmentId}/pending-residents`).catch(() => ({ data: [] })),
-    ]).then(([hDetail, a, c, p]) => {
-      const detailList = toArray(hDetail.data)
-      const alertList = toArray(a.data)
-      const compList = toArray(c.data)
-      const pendingList = toArray(p.data)
+    ]).then(([hRes, a, c, p]) => {
+      const hList = extractArray(hRes.data)
+      const alertList = extractArray(a.data)
+      const compList = extractArray(c.data)
+      const pendingList = extractArray(p.data)
 
-      // Set households count from detailList length, or fallback to chart items
-      setHouseholdsCount(detailList.length > 0 ? detailList.length : compList.length)
+      setHouseholdsCount(hList.length > 0 ? hList.length : compList.length)
       setAlerts(alertList)
       setComparison(compList)
       setPending(pendingList.length)

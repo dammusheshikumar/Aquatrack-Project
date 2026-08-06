@@ -59,31 +59,30 @@ export function WaterParticles({ color = '#12A594' }) {
 /* ─── Animated count-up stat ──────────────────────────────────────────────── */
 function CountUp({ target, duration = 1200 }) {
   const [n, setN] = useState(0)
-  const [started, setStarted] = useState(false)
   const ref = useRef(null)
 
   useEffect(() => {
-    const el = ref.current
-    if (!el || started) return
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return
-        setStarted(true)
-        const start = performance.now()
-        const tick = (now) => {
-          const t = Math.min((now - start) / duration, 1)
-          const ease = 1 - Math.pow(1 - t, 3)
-          setN(Math.round(ease * target))
-          if (t < 1) requestAnimationFrame(tick)
-        }
-        requestAnimationFrame(tick)
-        obs.disconnect()
-      },
-      { threshold: 0.3 }
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [target, duration, started])
+    const targetVal = Number(target) || 0
+    const startVal = n
+    if (startVal === targetVal) return
+
+    const start = performance.now()
+    let frameId
+
+    const tick = (now) => {
+      const t = Math.min((now - start) / duration, 1)
+      const ease = 1 - Math.pow(1 - t, 3)
+      setN(Math.round(startVal + ease * (targetVal - startVal)))
+      if (t < 1) {
+        frameId = requestAnimationFrame(tick)
+      }
+    }
+
+    frameId = requestAnimationFrame(tick)
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId)
+    }
+  }, [target, duration])
 
   return <span ref={ref}>{n.toLocaleString()}</span>
 }

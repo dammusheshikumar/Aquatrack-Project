@@ -57,14 +57,17 @@ public class DashboardController {
         BigDecimal similarSizedTotal = BigDecimal.ZERO;
         int similarSizedCount = 0;
 
-        BigDecimal sizeLowerBound = household.getFlatSizeSqft().multiply(BigDecimal.valueOf(0.85));
-        BigDecimal sizeUpperBound = household.getFlatSizeSqft().multiply(BigDecimal.valueOf(1.15));
+        BigDecimal sizeLowerBound = household.getFlatSizeSqft() != null ?
+                household.getFlatSizeSqft().multiply(BigDecimal.valueOf(0.85)) : null;
+        BigDecimal sizeUpperBound = household.getFlatSizeSqft() != null ?
+                household.getFlatSizeSqft().multiply(BigDecimal.valueOf(1.15)) : null;
 
         for (Household peer : peers) {
             BigDecimal peerTotal = sumRecent(peer.getId());
             apartmentTotal = apartmentTotal.add(peerTotal);
 
-            if (peer.getFlatSizeSqft().compareTo(sizeLowerBound) >= 0 &&
+            if (sizeLowerBound != null && sizeUpperBound != null && peer.getFlatSizeSqft() != null &&
+                    peer.getFlatSizeSqft().compareTo(sizeLowerBound) >= 0 &&
                     peer.getFlatSizeSqft().compareTo(sizeUpperBound) <= 0) {
                 similarSizedTotal = similarSizedTotal.add(peerTotal);
                 similarSizedCount++;
