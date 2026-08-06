@@ -25,19 +25,19 @@ export default function Register() {
   // Placed INSIDE component so t() is evaluated dynamically on language changes
   const PANEL_COPY = {
     resident: {
-      headline: t('auth.residentHeadline', { defaultValue: 'Join your community on AquaTrack.' }),
+      headline: t('auth.register.residentHeadline', { defaultValue: 'Join your community on AquaTrack.' }),
       bullets: [
-        { icon: '💧', text: t('auth.residentFeature-1', { defaultValue: 'See your real daily water use' }) },
-        { icon: '🧾', text: t('auth.residentFeature-2', { defaultValue: 'Get itemised PDF bills every month' }) },
-        { icon: '🔔', text: t('auth.residentFeature-3', { defaultValue: 'Receive alerts before usage spikes' }) },
+        { icon: '💧', text: t('auth.register.residentBullet1', { defaultValue: 'See your real daily water use' }) },
+        { icon: '🧾', text: t('auth.register.residentBullet2', { defaultValue: 'Get itemised PDF bills every month' }) },
+        { icon: '🔔', text: t('auth.register.residentBullet3', { defaultValue: 'Receive alerts before usage spikes' }) },
       ],
     },
     admin: {
-      headline: t('auth.adminHeadline', { defaultValue: 'Manage your apartment with precision.' }),
+      headline: t('auth.register.adminHeadline', { defaultValue: 'Manage your apartment with precision.' }),
       bullets: [
-        { icon: '💧', text: t('auth.residentFeature-1', { defaultValue: 'See your real daily water use' }) },
-        { icon: '🧾', text: t('auth.residentFeature-2', { defaultValue: 'Get itemised PDF bills every month' }) },
-        { icon: '🔔', text: t('auth.residentFeature-3', { defaultValue: 'Receive alerts before usage spikes' }) },
+        { icon: '💧', text: t('auth.register.adminBullet1', { defaultValue: 'Upload meter readings in bulk or manually' }) },
+        { icon: '🧾', text: t('auth.register.adminBullet2', { defaultValue: 'Configure tiered billing for fair charges' }) },
+        { icon: '🔔', text: t('auth.register.adminBullet3', { defaultValue: 'Approve residents and manage households' }) },
       ],
     },
   }
@@ -53,12 +53,12 @@ export default function Register() {
 
   const validate = () => {
     const e = {}
-    if (!form.name) e.name = t('auth.fieldRequired', { defaultValue: 'Required' })
-    if (!form.username || form.username.length < 4) e.username = t('auth.minUsernameLen', { defaultValue: 'Min 4 characters' })
-    if (!form.email || !form.email.includes('@')) e.email = t('auth.invalidEmail', { defaultValue: 'Valid email required' })
-    if (!form.password || form.password.length < 6) e.password = t('auth.minPassLen', { defaultValue: 'Min 6 characters' })
-    if (role === 'resident' && !form.apartment) e.apartment = t('auth.selectAptError', { defaultValue: 'Please select your apartment' })
-    if (role === 'resident' && !form.flat) e.flat = t('auth.fieldRequired', { defaultValue: 'Required' })
+    if (!form.name) e.name = t('auth.register.errRequired', { defaultValue: 'Required' })
+    if (!form.username || form.username.length < 4) e.username = t('auth.register.errUsernameMin', { defaultValue: 'Min 4 characters' })
+    if (!form.email || !form.email.includes('@')) e.email = t('auth.register.errEmailValid', { defaultValue: 'Valid email required' })
+    if (!form.password || form.password.length < 6) e.password = t('auth.register.errPasswordMin', { defaultValue: 'Min 6 characters' })
+    if (role === 'resident' && !form.apartment) e.apartment = t('auth.register.errApartmentRequired', { defaultValue: 'Please select your apartment' })
+    if (role === 'resident' && !form.flat) e.flat = t('auth.register.errRequired', { defaultValue: 'Required' })
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -95,7 +95,7 @@ export default function Register() {
         setSubmitted(true)
       }
     } catch (err) {
-      setSubmitError(err.response?.data?.message || t('auth.regFailed', { defaultValue: 'Registration failed. Please check your details.' }))
+      setSubmitError(err.response?.data?.message || t('auth.register.errGenericFailure', { defaultValue: 'Registration failed. Please check your details.' }))
     } finally {
       setLoading(false)
     }
@@ -105,12 +105,12 @@ export default function Register() {
     setGoogleError('')
 
     if (!form.apartment) {
-      setGoogleError(t('auth.selectAptError', { defaultValue: 'Please select your apartment.' }))
+      setGoogleError(t('auth.register.errApartmentRequired', { defaultValue: 'Please select your apartment.' }))
       return
     }
 
     if (!form.flat) {
-      setGoogleError(t('auth.enterFlatError', { defaultValue: 'Please enter your flat number.' }))
+      setGoogleError(t('auth.login.googleSelectFirst', { defaultValue: 'Select your apartment and enter your flat number.' }))
       return
     }
 
@@ -120,8 +120,8 @@ export default function Register() {
       await googleRegister(idToken, form.apartment, form.flat)
 
       setPendingMessage(
-        t('auth.googleSuccessPending', {
-          defaultValue: 'Your Google account has been submitted successfully. Your account is pending admin approval.',
+        t('auth.login.googlePending', {
+          defaultValue: "Your account is pending admin approval. You'll receive an email once approved.",
         })
       )
 
@@ -129,7 +129,7 @@ export default function Register() {
     } catch (err) {
       setGoogleError(
         err.response?.data?.message ||
-        t('auth.googleRegFailed', { defaultValue: 'Google registration failed.' })
+        t('auth.login.googleFailed', { defaultValue: 'Google sign-in failed. Please try again.' })
       )
     } finally {
       setGoogleSubmitting(false)
@@ -206,31 +206,34 @@ export default function Register() {
                 ✓
               </div>
               <h2 className="font-display font-bold text-2xl mb-3" style={{ color: '#06141B' }}>
-                {role === 'admin' ? t('auth.registered', { defaultValue: "You're registered!" }) : t('auth.registrationSubmitted', { defaultValue: 'Registration submitted!' })}
+                {role === 'admin' ? t('auth.register.successTitleAdmin', { defaultValue: "You're registered!" }) : t('auth.register.successTitleResident', { defaultValue: 'Registration submitted!' })}
               </h2>
               <p className="text-sm leading-relaxed mb-8" style={{ color: '#4B5F63' }}>
                 {role === 'resident'
-                  ? pendingMessage || t('auth.pendingApprovalNoticeFlat', { defaultValue: `Your account for flat ${form.flat || '—'} is pending admin approval. You'll receive an email once approved.`, flat: form.flat || '—' })
-                  : t('auth.adminReadyNotice', { defaultValue: 'Your admin account is ready. Log in to set up your apartment community.' })}
+                  ? pendingMessage || t('auth.register.successMessageResidentFallback', { defaultValue: `Your account for flat {{flat}} is pending admin approval. You'll receive an email once approved.`, flat: form.flat || '—' })
+                  : t('auth.register.successMessageAdmin', { defaultValue: 'Your admin account is ready. Log in to set up your apartment community.' })}
               </p>
               <button
                 onClick={() => navigate('/login')}
                 className="btn-press w-full py-3 rounded-xl font-semibold text-sm text-white"
                 style={{ background: '#12A594', boxShadow: '0 4px 20px rgba(18,165,148,.28)' }}
               >
-                {t('auth.goToLogin', { defaultValue: 'Go to login →' })}
+                {t('auth.register.goToLogin', { defaultValue: 'Go to login →' })}
               </button>
             </div>
           ) : (
             <>
-              <h2 className="font-display font-bold text-3xl mb-1" style={{ color: '#06141B' }}>{t('auth.createAccountTitle', { defaultValue: 'Create account' })}</h2>
-              <p className="text-sm mb-6" style={{ color: '#7A9097' }}>{t('auth.createAccountSubtitle', { defaultValue: 'Choose your role and fill in the details below.' })}</p>
+              <h2 className="font-display font-bold text-3xl mb-1" style={{ color: '#06141B' }}>{t('auth.register.title', { defaultValue: 'Create account' })}</h2>
+              <p className="text-sm mb-6" style={{ color: '#7A9097' }}>{t('auth.register.subtitle', { defaultValue: 'Choose your role and fill in the details below.' })}</p>
 
               <div className="mb-6">
                 <SegmentControl
                   value={role}
                   onChange={v => { setRole(v); setErrors({}); setSubmitError('') }}
-                  options={[{ value: 'resident', label: t('auth.residentRole', { defaultValue: 'Resident' }) }, { value: 'admin', label: t('auth.adminRole', { defaultValue: 'Apartment Admin' }) }]}
+                  options={[
+                    { value: 'resident', label: t('auth.roleResident', { defaultValue: 'Resident' }) },
+                    { value: 'admin', label: t('auth.roleAdmin', { defaultValue: 'Apartment Admin' }) }
+                  ]}
                 />
               </div>
 
@@ -242,10 +245,10 @@ export default function Register() {
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 {[
-                  { key: 'name', label: t('auth.fullName', { defaultValue: 'Full name' }), placeholder: 'Priya Mehta', autoComplete: 'name' },
-                  { key: 'username', label: t('auth.username', { defaultValue: 'Username' }), placeholder: 'priya_mehta', autoComplete: 'username' },
-                  { key: 'email', label: t('auth.email', { defaultValue: 'Email' }), placeholder: 'priya@example.com', type: 'email', autoComplete: 'email' },
-                  { key: 'password', label: t('auth.password', { defaultValue: 'Password' }), placeholder: '••••••••', type: 'password', autoComplete: 'new-password' },
+                  { key: 'name', label: t('auth.register.fullNameLabel', { defaultValue: 'Full name' }), placeholder: t('auth.register.fullNamePlaceholder', { defaultValue: 'Priya Mehta' }), autoComplete: 'name' },
+                  { key: 'username', label: t('auth.register.usernameLabel', { defaultValue: 'Username' }), placeholder: t('auth.register.usernamePlaceholder', { defaultValue: 'priya_mehta' }), autoComplete: 'username' },
+                  { key: 'email', label: t('auth.register.emailLabel', { defaultValue: 'Email' }), placeholder: t('auth.register.emailPlaceholder', { defaultValue: 'priya@example.com' }), type: 'email', autoComplete: 'email' },
+                  { key: 'password', label: t('auth.register.passwordLabel', { defaultValue: 'Password' }), placeholder: '••••••••', type: 'password', autoComplete: 'new-password' },
                 ].map(f => (
                   <div key={f.key}>
                     <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#4B5F63' }}>{f.label}</label>
@@ -267,7 +270,7 @@ export default function Register() {
                 {/* Apartment */}
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#4B5F63' }}>
-                    {t('auth.apartment', { defaultValue: 'Apartment' })} {role === 'admin' && <span className="normal-case font-normal">{t('auth.apartmentOptional', { defaultValue: '(optional if creating one later)' })}</span>}
+                    {t('auth.register.apartmentLabel', { defaultValue: 'Apartment' })} {role === 'admin' && <span className="normal-case font-normal">{t('auth.register.apartmentOptionalNote', { defaultValue: '(optional if creating one later)' })}</span>}
                   </label>
                   <select
                     value={form.apartment}
@@ -275,7 +278,7 @@ export default function Register() {
                     className="field-input w-full px-4 py-2.5 rounded-xl text-sm border appearance-none"
                     style={{ borderColor: errors.apartment ? '#ef4444' : 'rgba(6,20,27,.12)', color: form.apartment ? '#06141B' : '#7A9097' }}
                   >
-                    <option value="">{t('auth.selectApartment', { defaultValue: 'Select apartment…' })}</option>
+                    <option value="">{t('auth.register.apartmentSelect', { defaultValue: 'Select apartment…' })}</option>
                     {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
                   {errors.apartment && <p className="text-[11px] text-red-500 mt-1">⚠ {errors.apartment}</p>}
@@ -284,17 +287,17 @@ export default function Register() {
                 {/* Flat — resident only */}
                 <Expandable open={role === 'resident'}>
                   <div className="pt-0">
-                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#4B5F63' }}>{t('auth.flatNumber', { defaultValue: 'Flat number' })}</label>
+                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#4B5F63' }}>{t('auth.register.flatLabel', { defaultValue: 'Flat number' })}</label>
                     <input
                       type="text"
                       value={form.flat}
                       onChange={e => set('flat')(e.target.value)}
-                      placeholder="e.g. 3C"
+                      placeholder={t('auth.register.flatPlaceholder', { defaultValue: 'e.g. 3C' })}
                       className="field-input w-full px-4 py-2.5 rounded-xl text-sm border"
                       style={{ borderColor: errors.flat ? '#ef4444' : 'rgba(6,20,27,.12)', color: '#06141B' }}
                     />
                     {errors.flat && <p className="text-[11px] text-red-500 mt-1">⚠ {errors.flat}</p>}
-                    <p className="text-[11px] mt-1" style={{ color: '#7A9097' }}>{t('auth.flatHint', { defaultValue: 'Your flat must already be registered by your admin.' })}</p>
+                    <p className="text-[11px] mt-1" style={{ color: '#7A9097' }}>{t('auth.register.flatHint', { defaultValue: 'Your flat must already be registered by your admin.' })}</p>
                   </div>
                 </Expandable>
 
@@ -305,7 +308,7 @@ export default function Register() {
                   style={{ background: '#12A594', boxShadow: '0 4px 20px rgba(18,165,148,.28)' }}
                 >
                   {loading && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin-slow" />}
-                  {loading ? t('auth.creatingAccount', { defaultValue: 'Creating account…' }) : t('auth.registerButton', { defaultValue: 'Register' })}
+                  {loading ? t('auth.register.creatingAccount', { defaultValue: 'Creating account…' }) : t('auth.register.submit', { defaultValue: 'Register' })}
                 </button>
               </form>
               
@@ -313,7 +316,7 @@ export default function Register() {
                 <>
                   <div className="flex items-center gap-3 my-6">
                     <div className="flex-1 h-px" style={{ background: 'rgba(6,20,27,.1)' }} />
-                    <span className="text-xs" style={{ color: '#7A9097' }}>{t('auth.or', { defaultValue: 'or' })}</span>
+                    <span className="text-xs" style={{ color: '#7A9097' }}>{t('auth.login.or', { defaultValue: 'or' })}</span>
                     <div className="flex-1 h-px" style={{ background: 'rgba(6,20,27,.1)' }} />
                   </div>
 
@@ -334,16 +337,16 @@ export default function Register() {
 
                   {googleSubmitting && (
                     <p className="text-center text-sm mt-3" style={{ color: '#7A9097' }}>
-                      {t('auth.registeringWithGoogle', { defaultValue: 'Registering with Google...' })}
+                      {t('auth.login.googleSubmitting', { defaultValue: 'Submitting…' })}
                     </p>
                   )}
                 </>
               )}
 
               <p className="text-center text-sm mt-6" style={{ color: '#7A9097' }}>
-                {t('auth.alreadyHaveAccount', { defaultValue: 'Already have an account?' })}{' '}
+                {t('auth.register.alreadyHaveAccount', { defaultValue: 'Already have an account?' })}{' '}
                 <button onClick={() => navigate('/login')} className="font-semibold hover:underline" style={{ color: '#12A594' }}>
-                  {t('auth.goToLoginSimple', { defaultValue: 'Log in →' })}
+                  {t('auth.register.logIn', { defaultValue: 'Log in →' })}
                 </button>
               </p>
             </>

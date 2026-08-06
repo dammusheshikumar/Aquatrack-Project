@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useInView } from '../hooks/useInView'
 
 /* ─── Ripple Rings ────────────────────────────────────────────────────────── */
@@ -145,13 +146,15 @@ const BADGE_MAP = {
 }
 
 export function Badge({ variant, label }) {
+  const { t } = useTranslation()
   const s = BADGE_MAP[variant] || BADGE_MAP.info
+  const fallback = variant ? t(`common.badges.${variant}`, variant.charAt(0).toUpperCase() + variant.slice(1)) : ''
   return (
     <span
       className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide"
       style={{ background: s.bg, color: s.color }}
     >
-      {label ?? (variant ? variant.charAt(0).toUpperCase() + variant.slice(1) : '')}
+      {label ?? fallback}
     </span>
   )
 }
@@ -371,7 +374,8 @@ export function Expandable({ open, children }) {
 }
 
 /* ─── Confirmation dialog ─────────────────────────────────────────────────── */
-export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', onConfirm, onCancel, danger = true }) {
+export function ConfirmDialog({ open, title, message, confirmLabel, onConfirm, onCancel, danger = true }) {
+  const { t } = useTranslation()
   if (!open) return null
   return (
     <div
@@ -387,8 +391,8 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', 
         <h3 className="font-display font-semibold text-xl mb-2" style={{ color: '#06141B' }}>{title}</h3>
         <p className="text-sm leading-relaxed mb-7" style={{ color: '#4B5F63' }}>{message}</p>
         <div className="flex gap-3 justify-end">
-          <Btn variant="ghost" onClick={onCancel}>Cancel</Btn>
-          <Btn variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>{confirmLabel}</Btn>
+          <Btn variant="ghost" onClick={onCancel}>{t('common.cancel')}</Btn>
+          <Btn variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>{confirmLabel || t('common.confirm')}</Btn>
         </div>
       </div>
     </div>

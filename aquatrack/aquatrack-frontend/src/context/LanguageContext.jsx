@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import i18n from '../i18n'
+import i18n from '../i18n/config'
 
 const LanguageContext = createContext(null)
 
@@ -9,6 +9,7 @@ const SUPPORTED_LANGUAGES = [
   { code: 'te', label: 'తెలుగు' },
   { code: 'ta', label: 'தமிழ்' },
   { code: 'ur', label: 'اردو' },
+  { code: 'ka', label: 'ಕನ್ನಡ' }, 
 ]
 
 export function LanguageProvider({ children }) {

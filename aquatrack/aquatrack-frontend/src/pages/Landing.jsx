@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Navbar from '../components/Navbar'
+import LanguageSelector from '../components/LanguageSelector'
 import { RippleRings, WaterParticles, AlertBanner } from '../components/ui'
 import { useInView } from '../hooks/useInView'
 
@@ -38,71 +39,26 @@ function StatBadge({ num, label }) {
 }
 
 export default function Landing() {
-  const navigate = useNavigate()
   const { t } = useTranslation()
-
-  const features = [
-    {
-      icon: '⚖️',
-      title: t('landing.featureTariffTitle', { defaultValue: 'Tiered Tariff Billing' }),
-      desc: t('landing.featureTariffDesc', { defaultValue: 'Define N-tier rate bands so light users pay less per kL. Automatically applied each billing cycle with a full breakdown.' }),
-    },
-    {
-      icon: '🏢',
-      title: t('landing.featureApportionmentTitle', { defaultValue: 'Fair Cost Apportionment' }),
-      desc: t('landing.featureApportionmentDesc', { defaultValue: 'Bulk water costs shared proportionally by consumption. Every flat sees exactly how their charge was calculated — no black boxes.' }),
-    },
-    {
-      icon: '🔔',
-      title: t('landing.featureAlertsTitle', { defaultValue: 'Leak & Overuse Alerts' }),
-      desc: t('landing.featureAlertsDesc', { defaultValue: '2σ statistical detection flags households deviating from normal — admins catch drips before they become floods.' }),
-    },
-    {
-      icon: '📄',
-      title: t('landing.featureInvoicesTitle', { defaultValue: 'PDF Invoices & Email' }),
-      desc: t('landing.featureInvoicesDesc', { defaultValue: 'Itemised invoices generated automatically at cycle close. Emailed to residents immediately, download archive always available.' }),
-    },
-  ]
-
-  const contactItems = [
-    { icon: '✉️', label: t('landing.contactEmailLabel', { defaultValue: 'Email' }), value: 'support@aquatrack.app' },
-    { icon: '⏱', label: t('landing.contactResponseLabel', { defaultValue: 'Response time' }), value: t('landing.contactResponseValue', { defaultValue: 'Within 24 hours' }) },
-    { icon: '🏗', label: t('landing.contactAdminsLabel', { defaultValue: 'For admins' }), value: t('landing.contactAdminsValue', { defaultValue: 'Dedicated onboarding support' }) },
-  ]
-
-  const footerColumns = [
-    {
-      heading: t('landing.footerProductHeading', { defaultValue: 'Product' }),
-      links: [
-        t('landing.footerProductFeatures', { defaultValue: 'Features' }),
-        t('landing.footerProductPricing', { defaultValue: 'Pricing' }),
-        t('landing.footerProductSecurity', { defaultValue: 'Security' }),
-        t('landing.footerProductChangelog', { defaultValue: 'Changelog' }),
-      ],
-    },
-    {
-      heading: t('landing.footerRolesHeading', { defaultValue: 'Roles' }),
-      links: [
-        t('landing.footerRolesAdmins', { defaultValue: 'For Admins' }),
-        t('landing.footerRolesResidents', { defaultValue: 'For Residents' }),
-        t('landing.footerRolesGuide', { defaultValue: 'Community Guide' }),
-      ],
-    },
-    {
-      heading: t('landing.footerSupportHeading', { defaultValue: 'Support' }),
-      links: [
-        t('landing.footerSupportDocs', { defaultValue: 'Documentation' }),
-        t('landing.footerSupportContact', { defaultValue: 'Contact Us' }),
-        t('landing.footerSupportStatus', { defaultValue: 'Status' }),
-        t('landing.footerSupportPrivacy', { defaultValue: 'Privacy Policy' }),
-      ],
-    },
-  ]
+  const navigate = useNavigate()
   const [form, setForm] = useState({ name: '', email: '', queryType: '', message: '' })
   const [contactState, setContactState] = useState('idle')
   const [loading, setLoading] = useState(false)
 
   const heroRef = useRef(null)
+
+  const FEATURES = [
+    { icon: '⚖️', title: t('landing.features.tariff.title'), desc: t('landing.features.tariff.desc') },
+    { icon: '🏢', title: t('landing.features.apportionment.title'), desc: t('landing.features.apportionment.desc') },
+    { icon: '🔔', title: t('landing.features.alerts.title'), desc: t('landing.features.alerts.desc') },
+    { icon: '📄', title: t('landing.features.invoices.title'), desc: t('landing.features.invoices.desc') },
+  ]
+
+  const CONTACT = [
+    { icon: '✉️', label: t('landing.contact.emailLabel'), value: t('landing.contact.emailValue') },
+    { icon: '⏱', label: t('landing.contact.responseLabel'), value: t('landing.contact.responseValue') },
+    { icon: '🏗', label: t('landing.contact.adminsLabel'), value: t('landing.contact.adminsValue') },
+  ]
 
   /* Parallax on mouse over hero */
   useEffect(() => {
@@ -119,9 +75,6 @@ export default function Landing() {
     return () => hero.removeEventListener('mousemove', onMove)
   }, [])
 
-  // NOTE: there's no backend endpoint for the contact form yet — this stays
-  // a client-side confirmation. Wire it to a real /api/public/contact
-  // endpoint (with a matching email notification) when one exists.
   const submitContact = (e) => {
     e.preventDefault()
     if (!form.name || !form.email || !form.message) { setContactState('error'); return }
@@ -149,12 +102,18 @@ export default function Landing() {
           className="relative z-10 max-w-3xl mx-auto pt-28 pb-20"
           style={{ transform: 'translate(var(--mx), var(--my))', transition: 'transform .08s linear' }}
         >
+          {/* Language selector — pick a language and the whole app follows */}
+          <div className="animate-fade-up delay-0 mb-5 flex items-center justify-center gap-2">
+            <span className="text-xs font-medium" style={{ color: 'rgba(244,250,249,.55)' }}>{t('language.selectLabel')}:</span>
+            <LanguageSelector variant="dark" />
+          </div>
+
           <div className="animate-fade-up delay-0 mb-6 inline-flex items-center gap-2">
             <span
               className="px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-[.12em]"
               style={{ background: 'rgba(18,165,148,.18)', color: '#12A594', border: '1px solid rgba(18,165,148,.3)' }}
             >
-              {t('landing.badge')}
+              {t('landing.hero.badge')}
             </span>
           </div>
 
@@ -162,19 +121,19 @@ export default function Landing() {
             className="animate-fade-up delay-60 font-display text-5xl sm:text-6xl lg:text-[4.25rem] font-bold leading-[1.08] mb-6 text-white"
             style={{ textShadow: '0 2px 40px rgba(6,20,27,.4)' }}
           >
-            {t('landing.heroTitleLine1')}{' '}
+            {t('landing.hero.headlineLine1')}{' '}
             <span className="animate-float inline-block" style={{ color: '#12A594' }}>
-              {t('landing.heroTitleLine2')}
+              {t('landing.hero.headlineLine2')}
             </span>
             <br />
-            <span style={{ color: 'rgba(255,255,255,.88)' }}>{t('landing.heroTitleLine3')}</span>
+            <span style={{ color: 'rgba(255,255,255,.88)' }}>{t('landing.hero.headlineLine3')}</span>
           </h1>
 
           <p
             className="animate-fade-up delay-120 text-lg sm:text-xl mb-10 max-w-xl mx-auto leading-relaxed"
             style={{ color: 'rgba(244,250,249,.68)' }}
           >
-            {t('landing.heroDescription')}
+            {t('landing.hero.subtitle')}
           </p>
 
           <div className="animate-fade-up delay-180 flex flex-col sm:flex-row gap-4 justify-center">
@@ -183,23 +142,23 @@ export default function Landing() {
               className="btn-press px-9 py-4 rounded-2xl font-semibold text-base"
               style={{ background: '#F4B942', color: '#06141B', boxShadow: '0 6px 32px rgba(244,185,66,.35)' }}
             >
-              {t('landing.getStarted')}
+              {t('landing.hero.ctaPrimary')}
             </button>
             <button
               onClick={() => navigate('/login')}
               className="btn-press px-9 py-4 rounded-2xl font-semibold text-base border"
               style={{ border: '1.5px solid rgba(255,255,255,.2)', color: 'rgba(255,255,255,.85)', backdropFilter: 'blur(8px)', background: 'rgba(255,255,255,.05)' }}
             >
-              {t('landing.alreadyHaveAccount')}
+              {t('landing.hero.ctaSecondary')}
             </button>
           </div>
 
           <div className="animate-fade-up delay-240 grid grid-cols-2 sm:grid-cols-4 gap-3 mt-16">
             {[
-              { num: '2σ', label: t('landing.statLeak') },
-              { num: 'N-tier', label: t('landing.statRates') },
-              { num: 'PDF', label: t('landing.statInvoice') },
-              { num: 'Live', label: t('landing.statDashboard') },
+              { num: t('landing.hero.stat1Num'), label: t('landing.hero.stat1Label') },
+              { num: t('landing.hero.stat2Num'), label: t('landing.hero.stat2Label') },
+              { num: t('landing.hero.stat3Num'), label: t('landing.hero.stat3Label') },
+              { num: t('landing.hero.stat4Num'), label: t('landing.hero.stat4Label') },
             ].map(s => <StatBadge key={s.label} {...s} />)}
           </div>
         </div>
@@ -216,16 +175,16 @@ export default function Landing() {
         <Reveal>
           <div className="text-center mb-16">
             <span className="text-[11px] font-semibold uppercase tracking-[.14em]" style={{ color: '#12A594' }}>
-              {t('landing.featuresLabel')}
+              {t('landing.features.eyebrow')}
             </span>
             <h2 className="font-display text-4xl lg:text-5xl font-bold mt-3 leading-tight" style={{ color: '#06141B' }}>
-              {t('landing.featuresTitle')}
+              {t('landing.features.headlineLine1')}<br />{t('landing.features.headlineLine2')}
             </h2>
           </div>
         </Reveal>
 
         <div className="grid sm:grid-cols-2 gap-6">
-          {features.map((f, i) => (
+          {FEATURES.map((f, i) => (
             <Reveal key={f.title} delay={i * 80} direction={i % 2 === 0 ? 'left' : 'right'}>
               <div
                 className="bg-white rounded-2xl p-8 card-hover group"
@@ -259,17 +218,17 @@ export default function Landing() {
         <Reveal>
           <div className="relative z-10 max-w-2xl mx-auto">
             <h2 className="font-display text-4xl lg:text-5xl font-bold text-white mb-5 leading-tight">
-              {t('landing.ctaTitle')}
+              {t('landing.midCta.headlineLine1')}<br />{t('landing.midCta.headlineLine2')}
             </h2>
             <p className="text-base mb-10" style={{ color: 'rgba(244,250,249,.65)' }}>
-              {t('landing.ctaDescription')}
+              {t('landing.midCta.subtitle')}
             </p>
             <button
               onClick={() => navigate('/register')}
               className="btn-press inline-flex px-10 py-4 rounded-2xl font-semibold text-base"
               style={{ background: '#F4B942', color: '#06141B', boxShadow: '0 8px 36px rgba(244,185,66,.35)' }}
             >
-              {t('landing.createAccount')}
+              {t('landing.midCta.button')}
             </button>
           </div>
         </Reveal>
@@ -279,15 +238,15 @@ export default function Landing() {
       <section className="px-6 py-28" style={{ background: '#06141B' }}>
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-20 items-start">
           <Reveal direction="left">
-            <span className="text-[11px] font-semibold uppercase tracking-[.14em]" style={{ color: '#12A594' }}>{t('landing.contactEyebrow', { defaultValue: 'Get in touch' })}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[.14em]" style={{ color: '#12A594' }}>{t('landing.contact.eyebrow')}</span>
             <h2 className="font-display text-4xl lg:text-5xl font-bold text-white mt-3 mb-5 leading-tight">
-              {t('landing.contactHeadingLine1', { defaultValue: 'Have a question?' })}<br />{t('landing.contactHeadingLine2', { defaultValue: 'Raise a query.' })}
+              {t('landing.contact.headlineLine1')}<br />{t('landing.contact.headlineLine2')}
             </h2>
             <p className="text-sm leading-relaxed mb-12" style={{ color: 'rgba(244,250,249,.55)' }}>
-              {t('landing.contactDescription', { defaultValue: 'Our team helps you get started, resolve billing issues, or guide your community through onboarding.' })}
+              {t('landing.contact.subtitle')}
             </p>
             <div className="flex flex-col gap-7">
-              {contactItems.map((c, i) => (
+              {CONTACT.map((c, i) => (
                 <Reveal key={c.label} delay={i * 80}>
                   <div className="flex items-center gap-4">
                     <div
@@ -297,7 +256,7 @@ export default function Landing() {
                       {c.icon}
                     </div>
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-widest mb-0.5" style={{ color: '#7A9097' }}>{c.label}</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[.1em] mb-0.5" style={{ color: '#7A9097' }}>{c.label}</div>
                       <div className="text-sm font-medium text-white">{c.value}</div>
                     </div>
                   </div>
@@ -314,52 +273,58 @@ export default function Landing() {
               {contactState === 'success' ? (
                 <div className="animate-scale-in text-center py-8">
                   <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl" style={{ background: 'rgba(34,197,94,.15)' }}>✓</div>
-                  <h3 className="font-display font-semibold text-xl text-white mb-2">{t('landing.contactSuccessTitle', { defaultValue: 'Query received!' })}</h3>
-                  <p className="text-sm" style={{ color: 'rgba(244,250,249,.6)' }}>{t('landing.contactSuccessMessage', { defaultValue: "We'll get back to you within 24 hours." })}</p>
-                  <button onClick={() => setContactState('idle')} className="mt-6 text-sm" style={{ color: '#12A594' }}>{t('landing.contactSendAnother', { defaultValue: 'Send another →' })}</button>
+                  <h3 className="font-display font-semibold text-xl text-white mb-2">{t('landing.contact.successTitle')}</h3>
+                  <p className="text-sm" style={{ color: 'rgba(244,250,249,.6)' }}>{t('landing.contact.successMessage')}</p>
+                  <button onClick={() => setContactState('idle')} className="mt-6 text-sm" style={{ color: '#12A594' }}>{t('landing.contact.sendAnother')}</button>
                 </div>
               ) : (
                 <form onSubmit={submitContact} className="flex flex-col gap-5">
                   {contactState === 'error' && (
-                    <AlertBanner type="danger" message={t('landing.contactErrorMessage', { defaultValue: 'Please fill in all required fields.' })} onDismiss={() => setContactState('idle')} />
+                    <AlertBanner type="danger" message={t('landing.contact.errorMessage')} onDismiss={() => setContactState('idle')} />
                   )}
-                  {[
-                    { key: 'name', label: t('landing.contactNameLabel', { defaultValue: 'Name' }), placeholder: t('landing.contactNamePlaceholder', { defaultValue: 'Priya Mehta' }) },
-                    { key: 'email', label: t('landing.contactEmailLabel', { defaultValue: 'Email' }), placeholder: t('landing.contactEmailPlaceholder', { defaultValue: 'priya@example.com' }), type: 'email' },
-                  ].map(f => (
-                    <div key={f.key}>
-                      <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#7A9097' }}>{f.label}</label>
-                      <input
-                        type={f.type || 'text'}
-                        value={form[f.key]}
-                        onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
-                        placeholder={f.placeholder}
-                        className="field-input w-full px-4 py-2.5 rounded-xl text-sm"
-                        style={{ background: 'rgba(255,255,255,.07)', border: '1.5px solid rgba(255,255,255,.1)', color: '#fff' }}
-                      />
-                    </div>
-                  ))}
                   <div>
-                    <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#7A9097' }}>{t('landing.contactQueryTypeLabel', { defaultValue: 'Query type' })}</label>
+                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#7A9097' }}>{t('landing.contact.nameLabel')}</label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder={t('landing.contact.namePlaceholder')}
+                      className="field-input w-full px-4 py-2.5 rounded-xl text-sm"
+                      style={{ background: 'rgba(255,255,255,.07)', border: '1.5px solid rgba(255,255,255,.1)', color: '#fff' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#7A9097' }}>{t('landing.contact.emailFieldLabel')}</label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                      placeholder={t('landing.contact.emailPlaceholder')}
+                      className="field-input w-full px-4 py-2.5 rounded-xl text-sm"
+                      style={{ background: 'rgba(255,255,255,.07)', border: '1.5px solid rgba(255,255,255,.1)', color: '#fff' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#7A9097' }}>{t('landing.contact.queryTypeLabel')}</label>
                     <select
                       value={form.queryType}
                       onChange={e => setForm(p => ({ ...p, queryType: e.target.value }))}
                       className="field-input w-full px-4 py-2.5 rounded-xl text-sm appearance-none"
                       style={{ background: 'rgba(255,255,255,.07)', border: '1.5px solid rgba(255,255,255,.1)', color: form.queryType ? '#fff' : '#7A9097' }}
                     >
-                      <option value="">{t('landing.contactQueryTypePlaceholder', { defaultValue: 'Select type…' })}</option>
-                      <option value="billing">{t('landing.contactQueryTypeBilling', { defaultValue: 'Billing question' })}</option>
-                      <option value="technical">{t('landing.contactQueryTypeTechnical', { defaultValue: 'Technical issue' })}</option>
-                      <option value="onboarding">{t('landing.contactQueryTypeOnboarding', { defaultValue: 'New apartment onboarding' })}</option>
-                      <option value="other">{t('landing.contactQueryTypeOther', { defaultValue: 'Something else' })}</option>
+                      <option value="">{t('landing.contact.queryTypeSelect')}</option>
+                      <option value="billing">{t('landing.contact.queryTypeBilling')}</option>
+                      <option value="technical">{t('landing.contact.queryTypeTechnical')}</option>
+                      <option value="onboarding">{t('landing.contact.queryTypeOnboarding')}</option>
+                      <option value="other">{t('landing.contact.queryTypeOther')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#7A9097' }}>{t('landing.contactMessageLabel', { defaultValue: 'Message' })}</label>
+                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#7A9097' }}>{t('landing.contact.messageLabel')}</label>
                     <textarea
                       value={form.message}
                       onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
-                      placeholder={t('landing.contactMessagePlaceholder', { defaultValue: 'Describe your issue or question…' })}
+                      placeholder={t('landing.contact.messagePlaceholder')}
                       rows={4}
                       className="field-input w-full px-4 py-2.5 rounded-xl text-sm resize-none"
                       style={{ background: 'rgba(255,255,255,.07)', border: '1.5px solid rgba(255,255,255,.1)', color: '#fff' }}
@@ -372,7 +337,7 @@ export default function Landing() {
                     style={{ background: '#12A594', boxShadow: '0 4px 20px rgba(18,165,148,.3)' }}
                   >
                     {loading && <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin-slow" />}
-                    {loading ? t('landing.contactSending', { defaultValue: 'Sending…' }) : t('landing.contactSubmit', { defaultValue: 'Raise query →' })}
+                    {loading ? t('landing.contact.sending') : t('landing.contact.raiseQuery')}
                   </button>
                 </form>
               )}
@@ -397,10 +362,14 @@ export default function Landing() {
                 </span>
               </div>
               <p className="text-xs leading-relaxed" style={{ color: 'rgba(244,250,249,.38)' }}>
-                {t('landing.footerTagline', { defaultValue: 'Metering water, building trust — one apartment at a time.' })}
+                {t('landing.footer.tagline')}
               </p>
             </div>
-            {footerColumns.map(col => (
+            {[
+              { heading: t('landing.footer.productHeading'), links: t('landing.footer.productLinks', { returnObjects: true }) },
+              { heading: t('landing.footer.rolesHeading'), links: t('landing.footer.rolesLinks', { returnObjects: true }) },
+              { heading: t('landing.footer.supportHeading'), links: t('landing.footer.supportLinks', { returnObjects: true }) },
+            ].map(col => (
               <div key={col.heading}>
                 <div className="text-[11px] font-semibold uppercase tracking-[.12em] mb-4" style={{ color: '#7A9097' }}>{col.heading}</div>
                 <ul className="flex flex-col gap-2.5">
@@ -417,8 +386,8 @@ export default function Landing() {
             className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-7 text-xs"
             style={{ borderTop: '1px solid rgba(255,255,255,.05)', color: 'rgba(244,250,249,.3)' }}
           >
-            <span>© {new Date().getFullYear()} AquaTrack. {t('landing.footerRights', { defaultValue: 'All rights reserved.' })}</span>
-            <span>{t('landing.footerBottomTagline', { defaultValue: 'Metering water. Building trust.' })}</span>
+            <span>{t('landing.footer.copyright', { year: new Date().getFullYear() })}</span>
+            <span>{t('landing.footer.bottomTagline')}</span>
           </div>
         </div>
       </footer>

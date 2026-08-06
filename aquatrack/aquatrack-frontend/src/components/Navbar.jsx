@@ -1,39 +1,45 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
-import { useLanguage } from '../context/LanguageContext'
 
 /* ─── Navbar ──────────────────────────────────────────────────────────────── */
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useTranslation()
-  const { language, changeLanguage, languages } = useLanguage()
+
+  const isLandingPage = location.pathname === '/'
 
   useEffect(() => {
+    if (!isLandingPage) return
+
     const fn = () => setScrolled(window.scrollY > 10)
     window.addEventListener('scroll', fn, { passive: true })
     return () => window.removeEventListener('scroll', fn)
-  }, [])
+  }, [isLandingPage])
 
   const loggedIn = !!user
   const userName = user?.fullName || ''
-  const userRole = user?.role === 'ADMIN' ? 'Admin' : 'Resident'
+  const userRole = user?.role === 'ADMIN' ? t('navbar.adminRole') : t('navbar.residentRole')
 
   const handleLogout = () => {
     logout()
     navigate('/')
   }
 
+  // Determine if constant dark navbar background should be active
+  const isDarkNavbar = !isLandingPage || scrolled
+
   return (
     <nav
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-400"
       style={{
-        background: scrolled ? 'rgba(6,20,27,.93)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(14px) saturate(1.6)' : 'none',
-        boxShadow: scrolled ? '0 1px 28px rgba(0,0,0,.2), 0 1px 0 rgba(255,255,255,.04)' : 'none',
+        background: isDarkNavbar ? 'rgba(6,20,27,.93)' : 'transparent',
+        backdropFilter: isDarkNavbar ? 'blur(14px) saturate(1.6)' : 'none',
+        boxShadow: isDarkNavbar ? '0 1px 28px rgba(0,0,0,.2), 0 1px 0 rgba(255,255,255,.04)' : 'none',
       }}
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -54,65 +60,46 @@ export default function Navbar() {
         </button>
 
         {/* Right */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <label htmlFor="navbar-language-select" className="sr-only">
-            Select language
-          </label>
-          <select
-            id="navbar-language-select"
-            value={language || 'en'}
-            onChange={(e) => changeLanguage(e.target.value)}
-            className="rounded-full border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white shadow-sm backdrop-blur"
-            aria-label="Select language"
-          >
-            {languages.map((item) => (
-              <option key={item.code} value={item.code} style={{ color: '#06141B' }}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-
-          {loggedIn ? (
-            <>
-              <div className="flex items-center gap-2.5">
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ring-2"
-                  style={{ background: 'linear-gradient(135deg,#12A594,#0B3D3F)', ringColor: 'rgba(18,165,148,.3)' }}
-                >
-                  {userName.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="hidden sm:block">
-                  <div className="text-white text-sm font-medium leading-tight">{userName}</div>
-                  <div className="text-[11px]" style={{ color: '#12A594' }}>{userRole}</div>
-                </div>
+        {loggedIn ? (
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ring-2"
+                style={{ background: 'linear-gradient(135deg,#12A594,#0B3D3F)', ringColor: 'rgba(18,165,148,.3)' }}
+              >
+                {userName.slice(0, 2).toUpperCase()}
               </div>
-              <button
-                onClick={handleLogout}
-                className="btn-press text-sm px-4 py-1.5 rounded-xl border font-medium"
-                style={{ borderColor: 'rgba(255,255,255,.18)', color: 'rgba(255,255,255,.8)' }}
-              >
-                {t('common.logout', { defaultValue: 'Logout' })}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => navigate('/login')}
-                className="btn-press text-sm px-4 py-2 rounded-xl font-medium"
-                style={{ color: 'rgba(255,255,255,.8)' }}
-              >
-                {t('common.login', { defaultValue: 'Log in' })}
-              </button>
-              <button
-                onClick={() => navigate('/register')}
-                className="btn-press text-sm px-5 py-2 rounded-xl font-semibold"
-                style={{ background: '#F4B942', color: '#06141B', boxShadow: '0 2px 12px rgba(244,185,66,.3)' }}
-              >
-                {t('landing.getStarted', { defaultValue: 'Get started' })}
-              </button>
-            </>
-          )}
-        </div>
+              <div className="hidden sm:block">
+                <div className="text-white text-sm font-medium leading-tight">{userName}</div>
+                <div className="text-[11px]" style={{ color: '#12A594' }}>{userRole}</div>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="btn-press text-sm px-4 py-1.5 rounded-xl border font-medium"
+              style={{ borderColor: 'rgba(255,255,255,.18)', color: 'rgba(255,255,255,.8)' }}
+            >
+              {t('common.logout')}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/login')}
+              className="btn-press text-sm px-4 py-2 rounded-xl font-medium"
+              style={{ color: 'rgba(255,255,255,.8)' }}
+            >
+              {t('common.login')}
+            </button>
+            <button
+              onClick={() => navigate('/register')}
+              className="btn-press text-sm px-5 py-2 rounded-xl font-semibold"
+              style={{ background: '#F4B942', color: '#06141B', boxShadow: '0 2px 12px rgba(244,185,66,.3)' }}
+            >
+              {t('common.getStarted')}
+            </button>
+          </div>
+        )}
       </div>
     </nav>
   )
