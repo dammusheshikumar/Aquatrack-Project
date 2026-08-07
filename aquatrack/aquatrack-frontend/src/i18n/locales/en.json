@@ -60,8 +60,9 @@
   },
 
   "navbar": {
-    "adminRole": "Admin",
-    "residentRole": "Resident"
+    "adminRole": "Apartment Admin",
+    "residentRole": "Resident",
+    "superAdminRole": "Super Admin"
   },
 
   "landing": {
@@ -143,6 +144,7 @@
   "auth": {
     "roleResident": "Resident",
     "roleAdmin": "Apartment Admin",
+    "roleSuperAdmin": "Super Admin",
     "login": {
       "brandHeadline1": "Welcome back",
       "brandHeadline2": "to clearer",
@@ -185,6 +187,10 @@
       "adminBullet1": "Upload meter readings in bulk or manually",
       "adminBullet2": "Configure tiered billing for fair charges",
       "adminBullet3": "Approve residents and manage households",
+      "superAdminHeadline": "System-wide control across all apartments.",
+      "superAdminBullet1": "Create and manage all apartment communities",
+      "superAdminBullet2": "Approve apartment admins and view global status",
+      "superAdminBullet3": "Full multi-apartment oversight",
       "successTitleAdmin": "You're registered!",
       "successTitleResident": "Registration submitted!",
       "successMessageAdmin": "Your admin account is ready. Log in to set up your apartment community.",
@@ -499,5 +505,63 @@
       "confirmButton": "Yes, delete apartment",
       "deleteError": "Could not delete apartment."
     }
+  },
+
+  "superAdmin": {
+    "title": "Super Admin Control Panel",
+    "badge": "Super Admin",
+    "subtitle": "System Oversight · Multi-Apartment Management & Admin Approvals",
+    "addApartment": "+ Add New Apartment",
+    "createModalTitle": "Create a New Apartment",
+    "statTotalApartments": "Total Apartments",
+    "statTotalApartmentsCaption": "Managed across platform",
+    "statPendingAdmins": "Pending Admins",
+    "statPendingAdminsCaption": "Awaiting Super Admin approval",
+    "statPlatformStatus": "Platform Status",
+    "statPlatformStatusCaption": "All systems operational",
+    "tabOverview": "Platform Overview",
+    "tabApartments": "Apartments Directory",
+    "tabHouseholds": "Household Inspection",
+    "tabPendingAdmins": "Pending Admin Approvals",
+    "cardDirectoryTitle": "Apartment Directory",
+    "cardDirectoryDesc": "View, edit, or delete registered apartment communities.",
+    "cardDirectoryAction": "Manage Apartments →",
+    "cardPendingTitle": "Pending Admin Approvals",
+    "cardPendingDesc": "Approve apartment owners who registered to manage their apartment.",
+    "cardPendingAction": "Review {{count}} Pending →",
+    "cardInspectTitle": "Inspect Households",
+    "cardInspectDesc": "Inspect flats, occupancy, and meter serial numbers per apartment.",
+    "cardInspectAction": "Inspect Households →",
+    "aptAdminHeader": "Apartment Admin",
+    "noAdminRegistered": "No Admin registered yet",
+    "inspectFlats": "Inspect ({{count}} Flats)",
+    "emptyApartmentsTitle": "No apartments found",
+    "emptyApartmentsMsg": "Click '+ Add Apartment' to create the first apartment community.",
+    "inspectHouseholdsTitle": "Inspect Households",
+    "inspectHouseholdsDesc": "Read-only oversight of flats and meter serial numbers per apartment",
+    "emptyHouseholdsTitle": "No households found",
+    "emptyHouseholdsMsg": "No households registered under this apartment yet.",
+    "tableFlatNumber": "Flat Number",
+    "tableSize": "Size (sq ft)",
+    "tableOccupancy": "Occupancy",
+    "tableMeterSerial": "Meter Serial #",
+    "tableMeterStatus": "Meter Status",
+    "tableDailyLimit": "Daily Limit (kL)",
+    "pendingTitle": "Pending Apartment Admin Registrations",
+    "pendingDesc": "Review apartment owners/admins awaiting Super Admin approval",
+    "pendingEmptyTitle": "All caught up!",
+    "pendingEmptyMsg": "No pending apartment admin registrations to review.",
+    "tableFullName": "Full Name",
+    "tableUsername": "Username",
+    "tableEmail": "Email",
+    "tableTargetApartment": "Target Apartment",
+    "tableActions": "Actions",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approvedMsg": "Apartment Admin \"{{name}}\" has been approved!",
+    "rejectedMsg": "Apartment Admin \"{{name}}\" registration rejected.",
+    "createdSuccess": "Apartment \"{{name}}\" created successfully!",
+    "updatedSuccess": "Apartment details updated successfully.",
+    "deletedSuccess": "Apartment \"{{name}}\" deleted."
   }
 }

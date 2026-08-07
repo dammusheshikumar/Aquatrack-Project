@@ -35,9 +35,17 @@ export default function Register() {
     admin: {
       headline: t('auth.register.adminHeadline', { defaultValue: 'Manage your apartment with precision.' }),
       bullets: [
-        { icon: '💧', text: t('auth.register.adminBullet1', { defaultValue: 'Upload meter readings in bulk or manually' }) },
-        { icon: '🧾', text: t('auth.register.adminBullet2', { defaultValue: 'Configure tiered billing for fair charges' }) },
-        { icon: '🔔', text: t('auth.register.adminBullet3', { defaultValue: 'Approve residents and manage households' }) },
+        { icon: '🏢', text: t('auth.register.adminBullet1', { defaultValue: 'Manage households, meters, and tariffs' }) },
+        { icon: '🧾', text: t('auth.register.adminBullet2', { defaultValue: 'Generate monthly bills and collect fines' }) },
+        { icon: '🔔', text: t('auth.register.adminBullet3', { defaultValue: 'Approve residents and monitor water usage' }) },
+      ],
+    },
+    super_admin: {
+      headline: t('auth.register.superAdminHeadline', { defaultValue: 'System-wide control across all apartments.' }),
+      bullets: [
+        { icon: '🏙️', text: t('auth.register.superAdminBullet1', { defaultValue: 'Create and manage all apartment communities' }) },
+        { icon: '👑', text: t('auth.register.superAdminBullet2', { defaultValue: 'Approve apartment admins and view global status' }) },
+        { icon: '📊', text: t('auth.register.superAdminBullet3', { defaultValue: 'Full multi-apartment oversight' }) },
       ],
     },
   }
@@ -56,7 +64,11 @@ export default function Register() {
     if (!form.name) e.name = t('auth.register.errRequired', { defaultValue: 'Required' })
     if (!form.username || form.username.length < 4) e.username = t('auth.register.errUsernameMin', { defaultValue: 'Min 4 characters' })
     if (!form.email || !form.email.includes('@')) e.email = t('auth.register.errEmailValid', { defaultValue: 'Valid email required' })
-    if (!form.password || form.password.length < 6) e.password = t('auth.register.errPasswordMin', { defaultValue: 'Min 6 characters' })
+    const pwdRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=~\[\]{}:;<>,.?/|\\])[A-Za-z\d@$!%*?&#^()_\-+=~\[\]{}:;<>,.?/|\\]{8,}$/
+    if (!form.password || !pwdRegex.test(form.password)) {
+      e.password = t('auth.register.errPasswordStrict', { defaultValue: 'Must be at least 8 characters long and contain letters, numbers, and a special character.' })
+    }
+    if (role === 'admin' && !form.apartment) e.apartment = t('auth.register.errApartmentRequired', { defaultValue: 'Please select your apartment' })
     if (role === 'resident' && !form.apartment) e.apartment = t('auth.register.errApartmentRequired', { defaultValue: 'Please select your apartment' })
     if (role === 'resident' && !form.flat) e.flat = t('auth.register.errRequired', { defaultValue: 'Required' })
     setErrors(e)
@@ -74,12 +86,12 @@ export default function Register() {
         email: form.email,
         password: form.password,
         fullName: form.name,
-        role: role === 'admin' ? 'ADMIN' : 'RESIDENT',
+        role: role === 'super_admin' ? 'SUPER_ADMIN' : (role === 'admin' ? 'ADMIN' : 'RESIDENT'),
       }
 
       if (role === 'admin') {
-        payload.apartmentId = form.apartment || null
-      } else {
+        payload.apartmentId = form.apartment
+      } else if (role === 'resident') {
         const lookup = await axiosClient.get(
           `/public/apartments/${form.apartment}/households/lookup`,
           { params: { flatNumber: form.flat } }
@@ -206,12 +218,18 @@ export default function Register() {
                 ✓
               </div>
               <h2 className="font-display font-bold text-2xl mb-3" style={{ color: '#06141B' }}>
-                {role === 'admin' ? t('auth.register.successTitleAdmin', { defaultValue: "You're registered!" }) : t('auth.register.successTitleResident', { defaultValue: 'Registration submitted!' })}
+                {role === 'super_admin'
+                  ? t('auth.register.successTitleSuperAdmin', { defaultValue: 'Super Admin Registered!' })
+                  : t('auth.register.successTitlePending', { defaultValue: 'Registration Submitted!' })}
               </h2>
               <p className="text-sm leading-relaxed mb-8" style={{ color: '#4B5F63' }}>
-                {role === 'resident'
-                  ? pendingMessage || t('auth.register.successMessageResidentFallback', { defaultValue: `Your account for flat {{flat}} is pending admin approval. You'll receive an email once approved.`, flat: form.flat || '—' })
-                  : t('auth.register.successMessageAdmin', { defaultValue: 'Your admin account is ready. Log in to set up your apartment community.' })}
+                {pendingMessage || (
+                  role === 'admin'
+                    ? t('auth.register.successMessageAdmin', { defaultValue: 'Your Apartment Admin registration has been submitted successfully! Your account is pending approval from the Super Admin. You will be able to log in once approved.' })
+                    : role === 'resident'
+                    ? t('auth.register.successMessageResident', { defaultValue: 'Your registration has been submitted successfully! Your account is pending approval from your Apartment Admin. You will be able to log in once approved.' })
+                    : t('auth.register.successMessageSuperAdmin', { defaultValue: 'Super Admin account created successfully. You can log in immediately.' })
+                )}
               </p>
               <button
                 onClick={() => navigate('/login')}
@@ -232,7 +250,8 @@ export default function Register() {
                   onChange={v => { setRole(v); setErrors({}); setSubmitError('') }}
                   options={[
                     { value: 'resident', label: t('auth.roleResident', { defaultValue: 'Resident' }) },
-                    { value: 'admin', label: t('auth.roleAdmin', { defaultValue: 'Apartment Admin' }) }
+                    { value: 'admin', label: t('auth.roleAdmin', { defaultValue: 'Apartment Admin' }) },
+                    { value: 'super_admin', label: t('auth.roleSuperAdmin', { defaultValue: 'Super Admin' }) },
                   ]}
                 />
               </div>
@@ -268,21 +287,23 @@ export default function Register() {
                 ))}
 
                 {/* Apartment */}
-                <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#4B5F63' }}>
-                    {t('auth.register.apartmentLabel', { defaultValue: 'Apartment' })} {role === 'admin' && <span className="normal-case font-normal">{t('auth.register.apartmentOptionalNote', { defaultValue: '(optional if creating one later)' })}</span>}
-                  </label>
-                  <select
-                    value={form.apartment}
-                    onChange={e => set('apartment')(e.target.value)}
-                    className="field-input w-full px-4 py-2.5 rounded-xl text-sm border appearance-none"
-                    style={{ borderColor: errors.apartment ? '#ef4444' : 'rgba(6,20,27,.12)', color: form.apartment ? '#06141B' : '#7A9097' }}
-                  >
-                    <option value="">{t('auth.register.apartmentSelect', { defaultValue: 'Select apartment…' })}</option>
-                    {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                  </select>
-                  {errors.apartment && <p className="text-[11px] text-red-500 mt-1">⚠ {errors.apartment}</p>}
-                </div>
+                {(role === 'resident' || role === 'admin') && (
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-[.1em] mb-1.5" style={{ color: '#4B5F63' }}>
+                      {t('auth.register.apartmentLabel', { defaultValue: 'Apartment' })}
+                    </label>
+                    <select
+                      value={form.apartment}
+                      onChange={e => set('apartment')(e.target.value)}
+                      className="field-input w-full px-4 py-2.5 rounded-xl text-sm border appearance-none"
+                      style={{ borderColor: errors.apartment ? '#ef4444' : 'rgba(6,20,27,.12)', color: form.apartment ? '#06141B' : '#7A9097' }}
+                    >
+                      <option value="">{t('auth.register.selectApartment', { defaultValue: 'Select apartment…' })}</option>
+                      {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                    {errors.apartment && <p className="text-[11px] text-red-500 mt-1">⚠ {errors.apartment}</p>}
+                  </div>
+                )}
 
                 {/* Flat — resident only */}
                 <Expandable open={role === 'resident'}>

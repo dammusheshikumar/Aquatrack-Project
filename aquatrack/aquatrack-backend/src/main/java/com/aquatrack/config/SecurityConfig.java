@@ -25,7 +25,7 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Value("${aquatrack.cors.allowed-origins}")
+    @Value("${aquatrack.cors.allowed-origins:http://localhost:5000}")
     private String allowedOrigins;
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -73,8 +73,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/swagger-ui/**", "/api-docs/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/resident/**").hasAnyRole("ADMIN", "RESIDENT")
+                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                .requestMatchers("/api/resident/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "RESIDENT")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

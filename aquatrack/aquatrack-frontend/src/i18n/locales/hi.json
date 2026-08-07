@@ -60,8 +60,9 @@
   },
 
   "navbar": {
-    "adminRole": "एडमिन",
-    "residentRole": "निवासी"
+    "adminRole": "अपार्टमेंट एडमिन",
+    "residentRole": "निवासी",
+    "superAdminRole": "सुपर एडमिन"
   },
 
   "landing": {
@@ -143,6 +144,7 @@
   "auth": {
     "roleResident": "निवासी",
     "roleAdmin": "अपार्टमेंट एडमिन",
+    "roleSuperAdmin": "सुपर एडमिन",
     "login": {
       "brandHeadline1": "वापसी पर स्वागत है",
       "brandHeadline2": "स्पष्ट पानी",
@@ -185,6 +187,10 @@
       "adminBullet1": "मीटर रीडिंग थोक में या मैन्युअल रूप से अपलोड करें",
       "adminBullet2": "उचित शुल्क के लिए स्तरीय बिलिंग कॉन्फ़िगर करें",
       "adminBullet3": "निवासियों को स्वीकृत करें और घरों को प्रबंधित करें",
+      "superAdminHeadline": "सभी अपार्टमेन्टों पर संपूर्ण नियंत्रण।",
+      "superAdminBullet1": "सभी अपार्टमेन्ट कम्युनिटीज बनाएं और प्रबंधित करें",
+      "superAdminBullet2": "अपार्टमेन्ट एडमिन्स को स्वीकृत करें और वैश्विक स्थिति देखें",
+      "superAdminBullet3": "पूर्ण बहु-अपार्टमेन्ट निगरानी",
       "successTitleAdmin": "आपका पंजीकरण हो गया!",
       "successTitleResident": "पंजीकरण जमा किया गया!",
       "successMessageAdmin": "आपका एडमिन खाता तैयार है। अपने अपार्टमेंट समुदाय को सेट करने के लिए लॉग इन करें।",
@@ -499,5 +505,63 @@
       "confirmButton": "हाँ, अपार्टमेंट हटाएं",
       "deleteError": "अपार्टमेंट हटाया नहीं जा सका।"
     }
+  },
+
+  "superAdmin": {
+    "title": "सुपर एडमिन नियंत्रण कक्ष",
+    "badge": "सुपर एडमिन",
+    "subtitle": "सिस्टम निरीक्षण · बहु-अपार्टमेंट प्रबंधन और एडमिन स्वीकृति",
+    "addApartment": "+ नया अपार्टमेंट जोड़ें",
+    "createModalTitle": "एक नया अपार्टमेंट बनाएं",
+    "statTotalApartments": "कुल अपार्टमेंट",
+    "statTotalApartmentsCaption": "प्लेटफ़ॉर्म पर प्रबंधित",
+    "statPendingAdmins": "लंबित एडमिन",
+    "statPendingAdminsCaption": "सुपर एडमिन स्वीकृति की प्रतीक्षा में",
+    "statPlatformStatus": "प्लेटफ़ॉर्म स्थिति",
+    "statPlatformStatusCaption": "सभी प्रणालियाँ चालू हैं",
+    "tabOverview": "प्लेटफ़ॉर्म अवलोकन",
+    "tabApartments": "अपार्टमेंट डायरेक्टरी",
+    "tabHouseholds": "घर निरीक्षण",
+    "tabPendingAdmins": "लंबित एडमिन स्वीकृतियां",
+    "cardDirectoryTitle": "अपार्टमेंट डायरेक्टरी",
+    "cardDirectoryDesc": "पंजीकृत अपार्टमेंट समुदायों को देखें, संपादित करें या हटाएं।",
+    "cardDirectoryAction": "अपार्टमेंट प्रबंधित करें →",
+    "cardPendingTitle": "लंबित एडमिन स्वीकृतियां",
+    "cardPendingDesc": "उन अपार्टमेंट मालिकों को स्वीकृत करें जिन्होंने प्रबंधन के लिए पंजीकरण किया है।",
+    "cardPendingAction": "समीक्षा करें ({{count}} लंबित) →",
+    "cardInspectTitle": "घर निरीक्षण",
+    "cardInspectDesc": "प्रति अपार्टमेंट फ्लैट, निवासियों की संख्या और मीटर नंबर का निरीक्षण करें।",
+    "cardInspectAction": "घरों का निरीक्षण करें →",
+    "aptAdminHeader": "अपार्टमेंट एडमिन",
+    "noAdminRegistered": "अभी तक कोई एडमिन पंजीकृत नहीं है",
+    "inspectFlats": "निरीक्षण करें ({{count}} फ्लैट)",
+    "emptyApartmentsTitle": "कोई अपार्टमेंट नहीं मिला",
+    "emptyApartmentsMsg": "पहला अपार्टमेंट समुदाय बनाने के लिए '+ नया अपार्टमेंट जोड़ें' पर क्लिक करें।",
+    "inspectHouseholdsTitle": "घर निरीक्षण",
+    "inspectHouseholdsDesc": "प्रत्येक अपार्टमेंट के फ्लैटों और मीटर नंबरों का केवल-पढ़ने योग्य निरीक्षण",
+    "emptyHouseholdsTitle": "कोई घर नहीं मिला",
+    "emptyHouseholdsMsg": "इस अपार्टमेंट के तहत अभी तक कोई घर पंजीकृत नहीं है।",
+    "tableFlatNumber": "फ्लैट नंबर",
+    "tableSize": "आकार (वर्ग फुट)",
+    "tableOccupancy": "निवासी",
+    "tableMeterSerial": "मीटर सीरियल नं.",
+    "tableMeterStatus": "मीटर स्थिति",
+    "tableDailyLimit": "दैनिक सीमा (kL)",
+    "pendingTitle": "लंबित अपार्टमेंट एडमिन पंजीकरण",
+    "pendingDesc": "सुपर एडमिन की स्वीकृति की प्रतीक्षा कर रहे अपार्टमेंट मालिकों/एडमिनों की समीक्षा करें",
+    "pendingEmptyTitle": "सब पूरा हुआ!",
+    "pendingEmptyMsg": "समीक्षा के लिए कोई लंबित अपार्टमेंट एडमिन पंजीकरण नहीं है।",
+    "tableFullName": "पूरा नाम",
+    "tableUsername": "उपयोगकर्ता नाम",
+    "tableEmail": "ईमेल",
+    "tableTargetApartment": "लक्षित अपार्टमेंट",
+    "tableActions": "कार्रवाई",
+    "approve": "स्वीकृत करें",
+    "reject": "अस्वीकार करें",
+    "approvedMsg": "अपार्टमेंट एडमिन \"{{name}}\" को स्वीकृत कर दिया गया है!",
+    "rejectedMsg": "अपार्टमेंट एडमिन \"{{name}}\" पंजीकरण अस्वीकृत कर दिया गया।",
+    "createdSuccess": "अपार्टमेंट \"{{name}}\" सफलतापूर्वक बनाया गया!",
+    "updatedSuccess": "अपार्टमेंट विवरण सफलतापूर्वक अद्यतन किए गए।",
+    "deletedSuccess": "अपार्टमेंट \"{{name}}\" हटा दिया गया।"
   }
 }

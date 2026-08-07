@@ -1,11 +1,13 @@
 package com.aquatrack.service;
 
+import com.aquatrack.dto.admin.ApartmentDetailResponse;
 import com.aquatrack.dto.admin.HouseholdDetailResponse;
 import com.aquatrack.dto.admin.ResidentAccountResponse;
 import com.aquatrack.dto.household.ApartmentRequest;
 import com.aquatrack.dto.household.HouseholdRequest;
 import com.aquatrack.dto.household.HouseholdUpdateRequest;
 import com.aquatrack.entity.Apartment;
+import com.aquatrack.entity.Role;
 import com.aquatrack.entity.Fine;
 import com.aquatrack.entity.FineStatus;
 import com.aquatrack.entity.Household;
@@ -45,6 +47,39 @@ public class ApartmentService {
 
     public List<Apartment> listApartments() {
         return apartmentRepository.findAll();
+    }
+
+    public List<ApartmentDetailResponse> listApartmentDetails() {
+        List<Apartment> apartments = apartmentRepository.findAll();
+        List<User> allAdmins = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == Role.ADMIN)
+                .toList();
+
+        return apartments.stream().map(apt -> {
+            int hhCount = householdRepository.findByApartmentId(apt.getId()).size();
+
+            List<User> aptAdmins = allAdmins.stream().filter(u -> {
+                if (u.getApartment() != null && u.getApartment().getId().equals(apt.getId())) {
+                    return true;
+                }
+                if (u.getHousehold() != null && u.getHousehold().getApartment() != null
+                        && u.getHousehold().getApartment().getId().equals(apt.getId())) {
+                    return true;
+                }
+                // If admin has no explicit apartment link, associate with first apartment
+                if (u.getApartment() == null && u.getHousehold() == null && !apartments.isEmpty()) {
+                    return apt.getId().equals(apartments.get(0).getId());
+                }
+                return false;
+            }).toList();
+
+            List<ApartmentDetailResponse.AdminSummary> adminSummaries = aptAdmins.stream()
+                    .map(u -> new ApartmentDetailResponse.AdminSummary(
+                            u.getId(), u.getFullName(), u.getUsername(), u.getEmail(), u.getApprovalStatus().name()))
+                    .toList();
+            return new ApartmentDetailResponse(
+                    apt.getId(), apt.getName(), apt.getAddress(), hhCount, adminSummaries);
+        }).toList();
     }
 
     public Apartment getApartment(Long id) {

@@ -25,6 +25,7 @@ com\aquatrack\entity\WaterUsageLog.class
 com\aquatrack\service\EmailService.class
 com\aquatrack\repository\WaterUsageLogRepository.class
 com\aquatrack\dto\usage\UsageLogRequest.class
+com\aquatrack\dto\admin\ApartmentDetailResponse.class
 com\aquatrack\entity\PurchaseType.class
 com\aquatrack\dto\auth\RegisterRequest.class
 com\aquatrack\entity\ApprovalStatus.class
@@ -35,6 +36,7 @@ com\aquatrack\service\EmailService$1.class
 com\aquatrack\service\UsageLogService.class
 com\aquatrack\service\BillingService.class
 com\aquatrack\entity\BillingCycle.class
+com\aquatrack\dto\admin\ApartmentDetailResponse$AdminSummary.class
 com\aquatrack\dto\billing\PurchaseEntryRequest.class
 com\aquatrack\dto\admin\ResidentDashboardResponse.class
 com\aquatrack\repository\ApartmentRepository.class
@@ -102,3 +104,4 @@ com\aquatrack\service\AlertService.class
 com\aquatrack\entity\WaterPurchase$WaterPurchaseBuilder.class
 com\aquatrack\controller\FineController.class
 com\aquatrack\controller\ResidentApprovalController.class
+com\aquatrack\config\DataSeeder.class

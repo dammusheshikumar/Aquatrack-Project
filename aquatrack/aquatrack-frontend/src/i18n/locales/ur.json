@@ -60,8 +60,9 @@
   },
 
   "navbar": {
-    "adminRole": "ایڈمن",
-    "residentRole": "رہائشی"
+    "adminRole": "اپارٹمنٹ ایڈمن",
+    "residentRole": "رہائشی",
+    "superAdminRole": "سپر ایڈمن"
   },
 
   "landing": {
@@ -143,6 +144,7 @@
   "auth": {
     "roleResident": "رہائشی",
     "roleAdmin": "اپارٹمنٹ ایڈمن",
+    "roleSuperAdmin": "سپر ایڈمن",
     "login": {
       "brandHeadline1": "واضح پانی کے بلوں کی",
       "brandHeadline2": "دنیا میں",
@@ -185,6 +187,10 @@
       "adminBullet1": "بلک میں یا دستی طور پر میٹر ریڈنگز اپ لوڈ کریں",
       "adminBullet2": "منصفانہ چارجز کے لیے درجے وار بلنگ ترتیب دیں",
       "adminBullet3": "رہائشیوں کو منظور کریں اور گھرانوں کا انتظام کریں",
+      "superAdminHeadline": "تمام اپارٹمنٹس پر مکمل سسٹم کنٹرول۔",
+      "superAdminBullet1": "تمام اپارٹمنٹ کمیونٹیز بنائیں اور ان کا انتظام کریں",
+      "superAdminBullet2": "اپارٹمنٹ ایڈمنز کو منظور کریں اور عالمی حالت دیکھیں",
+      "superAdminBullet3": "مکمل ملٹی اپارٹمنٹ نگرانی",
       "successTitleAdmin": "آپ کی رجسٹریشن ہو گئی ہے!",
       "successTitleResident": "رجسٹریشن جمع ہو گئی!",
       "successMessageAdmin": "آپ کا ایڈمن اکاؤنٹ تیار ہے۔ اپنی اپارٹمنٹ سوسائٹی ترتیب دینے کے لیے لاگ ان کریں۔",
@@ -499,5 +505,63 @@
       "confirmButton": "ہاں، اپارٹمنٹ حذف کریں",
       "deleteError": "اپارٹمنٹ حذف نہیں کیا جا سکا۔"
     }
+  },
+
+  "superAdmin": {
+    "title": "سپر ایڈمن کنٹرول پینل",
+    "badge": "سپر ایڈمن",
+    "subtitle": "سسٹم کی نگرانی · ملٹی اپارٹمنٹ مینجمنٹ اور ایڈمن منظوری",
+    "addApartment": "+ نیا اپارٹمنٹ شامل کریں",
+    "createModalTitle": "نیا اپارٹمنٹ بنائیں",
+    "statTotalApartments": "کل اپارٹمنٹس",
+    "statTotalApartmentsCaption": "پلیٹ فارم پر منظم",
+    "statPendingAdmins": "زیر التواء ایڈمنز",
+    "statPendingAdminsCaption": "سپر ایڈمن کی منظوری کے منتظر",
+    "statPlatformStatus": "پلیٹ فارم کی حالت",
+    "statPlatformStatusCaption": "تمام سسٹمز فعال ہیں",
+    "tabOverview": "پلیٹ فارم جائزہ",
+    "tabApartments": "اپارٹمنٹس ڈائریکٹری",
+    "tabHouseholds": "گھروں کا معائنہ",
+    "tabPendingAdmins": "زیر التواء ایڈمن منظوریاں",
+    "cardDirectoryTitle": "اپارٹمنٹ ڈائریکٹری",
+    "cardDirectoryDesc": "رجسٹرڈ اپارٹمنٹ کمیونٹیز دیکھیں، ترمیم کریں یا حذف کریں۔",
+    "cardDirectoryAction": "اپارٹمنٹس کا انتظام کریں →",
+    "cardPendingTitle": "زیر التواء ایڈمن منظوریاں",
+    "cardPendingDesc": "انتظام کے لیے رجسٹرڈ اپارٹمنٹ مالکان کی توثیق کریں۔",
+    "cardPendingAction": "جائزہ لیں ({{count}} زیر التواء) →",
+    "cardInspectTitle": "گھروں کا معائنہ",
+    "cardInspectDesc": "ہر اپارٹمنٹ کے فلیٹس، رہائشیوں اور میٹر نمبر کا معائنہ کریں۔",
+    "cardInspectAction": "گھروں کا معائنہ کریں →",
+    "aptAdminHeader": "اپارٹمنٹ ایڈمن",
+    "noAdminRegistered": "ابھی تک کوئی ایڈمن رجسٹرڈ نہیں ہے",
+    "inspectFlats": "معائنہ کریں ({{count}} فلیٹس)",
+    "emptyApartmentsTitle": "کوئی اپارٹمنٹ نہیں ملا",
+    "emptyApartmentsMsg": "پہلی اپارٹمنٹ کمیونٹی بنانے کے لیے '+ نیا اپارٹمنٹ' پر کلک کریں۔",
+    "inspectHouseholdsTitle": "گھروں کا معائنہ",
+    "inspectHouseholdsDesc": "ہر اپارٹمنٹ کے فلیٹس اور میٹر نمبرز کی صرف پڑھنے کی نگرانی",
+    "emptyHouseholdsTitle": "کوئی گھر نہیں ملا",
+    "emptyHouseholdsMsg": "اس اپارٹمنٹ کے تحت ابھی تک کوئی گھر رجسٹرڈ نہیں ہے۔",
+    "tableFlatNumber": "فلیٹ نمبر",
+    "tableSize": "سائز (مربع فٹ)",
+    "tableOccupancy": "رہائشی",
+    "tableMeterSerial": "میٹر سیریل نمبر",
+    "tableMeterStatus": "میٹر کی حالت",
+    "tableDailyLimit": "روزانہ کی حد (kL)",
+    "pendingTitle": "زیر التواء اپارٹمنٹ ایڈمن رجسٹریشن",
+    "pendingDesc": "سپر ایڈمن کی منظوری کے منتظر ایڈمنز کا جائزہ لیں",
+    "pendingEmptyTitle": "سب مکمل!",
+    "pendingEmptyMsg": "جائزہ لینے کے لیے کوئی زیر التواء ایڈمن رجسٹریشن نہیں ہے۔",
+    "tableFullName": "پورا نام",
+    "tableUsername": "یوزر نیم",
+    "tableEmail": "ای میل",
+    "tableTargetApartment": "اپارٹمنٹ",
+    "tableActions": "اقدامات",
+    "approve": "منظور کریں",
+    "reject": "مسترد کریں",
+    "approvedMsg": "اپارٹمنٹ ایڈمن \"{{name}}\" منظور ہو گئے ہیں!",
+    "rejectedMsg": "اپارٹمنٹ ایڈمن \"{{name}}\" کی رجسٹریشن مسترد کر دی گئی۔",
+    "createdSuccess": "اپارٹمنٹ \"{{name}}\" کامیابی کے ساتھ بن گیا!",
+    "updatedSuccess": "اپارٹمنٹ کی تفصیلات اپ ڈیٹ ہو گئیں۔",
+    "deletedSuccess": "اپارٹمنٹ \"{{name}}\" حذف ہو گیا۔"
   }
 }

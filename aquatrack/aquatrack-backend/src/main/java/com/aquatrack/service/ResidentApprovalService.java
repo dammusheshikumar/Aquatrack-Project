@@ -11,11 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * Admin-side workflow for reviewing resident self-registrations. New
- * residents (local or Google) are created PENDING and cannot log in until
- * approved here.
- */
 @Service
 public class ResidentApprovalService {
 
@@ -28,32 +23,41 @@ public class ResidentApprovalService {
     }
 
     public List<User> listPending(Long apartmentId) {
-        return userRepository.findByHousehold_Apartment_IdAndRoleAndApprovalStatus(
+        List<User> residents = userRepository.findByHousehold_Apartment_IdAndRoleAndApprovalStatus(
                 apartmentId, Role.RESIDENT, ApprovalStatus.PENDING);
+        List<User> admins = userRepository.findByApartmentIdAndRoleAndApprovalStatus(
+                apartmentId, Role.ADMIN, ApprovalStatus.PENDING);
+        residents.addAll(admins);
+        return residents;
+    }
+
+    public List<User> listPendingAdmins() {
+        return userRepository.findByRoleAndApprovalStatus(Role.ADMIN, ApprovalStatus.PENDING);
     }
 
     @Transactional
     public User approve(Long userId) {
-        User user = getPendingResident(userId);
+        User user = getPendingUser(userId);
         user.setApprovalStatus(ApprovalStatus.APPROVED);
         User saved = userRepository.save(user);
-        emailService.sendRegistrationApprovedEmail(saved);
+        try {
+            emailService.sendRegistrationApprovedEmail(saved);
+        } catch (Exception ignored) {}
         return saved;
     }
 
     @Transactional
     public void reject(Long userId) {
-        User user = getPendingResident(userId);
-        emailService.sendRegistrationRejectedEmail(user);
+        User user = getPendingUser(userId);
+        try {
+            emailService.sendRegistrationRejectedEmail(user);
+        } catch (Exception ignored) {}
         userRepository.delete(user);
     }
 
-    private User getPendingResident(Long userId) {
+    private User getPendingUser(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
-        if (user.getRole() != Role.RESIDENT) {
-            throw new BadRequestException("Only resident registrations go through this approval workflow");
-        }
         if (user.getApprovalStatus() != ApprovalStatus.PENDING) {
             throw new BadRequestException("This registration has already been reviewed");
         }

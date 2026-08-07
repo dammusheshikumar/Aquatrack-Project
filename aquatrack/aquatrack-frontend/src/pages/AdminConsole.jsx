@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import Navbar from '../components/Navbar'
+import { useAuth } from '../context/AuthContext'
 import { StatCard, Badge, AlertBanner, Card, TabBar, EmptyState, Btn, ConfirmDialog, SkeletonRows } from '../components/ui'
 import axiosClient from '../api/axiosClient'
 import {
@@ -1213,7 +1214,7 @@ function AlertsTab({ apartmentId, onChanged }) {
 }
 
 /* ── Apartment Settings ────────────────────────────────────────────────────── */
-function SettingsTab({ apartment, onUpdated, onDeleted }) {
+function SettingsTab({ apartment, isSuperAdmin, onUpdated, onDeleted }) {
   const { t } = useTranslation()
   const [form, setForm] = useState({ name: apartment?.name || '', address: apartment?.address || '' })
   const [showConfirm, setShowConfirm] = useState(false)
@@ -1256,7 +1257,6 @@ function SettingsTab({ apartment, onUpdated, onDeleted }) {
     <div className="py-6 grid lg:grid-cols-2 gap-8 items-start">
       <Card className="p-6">
         <h3 className="font-display font-semibold text-lg mb-5" style={{ color: '#06141B' }}>{t('admin.settings.editTitle', { defaultValue: 'Edit Apartment Details' })}</h3>
-        {banner && <div className="mb-4"><AlertBanner type={banner.type} message={banner.msg} onDismiss={() => setBanner(null)} /></div>}
         <div className="flex flex-col gap-4">
           {[
             { key: 'name', label: t('admin.settings.nameLabel', { defaultValue: 'Apartment name' }), placeholder: t('admin.settings.namePlaceholder', { defaultValue: 'Greenview Heights' }) },
@@ -1273,69 +1273,493 @@ function SettingsTab({ apartment, onUpdated, onDeleted }) {
               />
             </div>
           ))}
-          <Btn variant="primary" onClick={save} loading={saving}>{t('common.save', { defaultValue: 'Save' })}</Btn>
+          <Btn variant="primary" onClick={save} loading={saving}>{t('admin.settings.saveButton', { defaultValue: 'Save Changes' })}</Btn>
         </div>
       </Card>
 
-      <Card className="p-6" style={{ border: '1.5px solid rgba(239,68,68,0.2)' }}>
-        <h3 className="font-display font-semibold text-lg mb-2" style={{ color: '#b91c1c' }}>{t('admin.settings.dangerTitle', { defaultValue: 'Danger Zone' })}</h3>
-        <p className="text-sm mb-5" style={{ color: '#4B5F63' }}>
-          {t('admin.settings.dangerMessage', { defaultValue: 'Deleting this apartment will permanently remove all associated households, meter readings, billing cycles, invoices, fines, and resident accounts. This action cannot be undone.' })}
-        </p>
-        <Btn variant="danger" onClick={() => setShowConfirm(true)}>{t('admin.settings.deleteButton', { defaultValue: 'Delete Apartment' })}</Btn>
-      </Card>
+      {isSuperAdmin && (
+        <Card className="p-6" style={{ border: '1.5px solid rgba(239,68,68,0.2)' }}>
+          <h3 className="font-display font-semibold text-lg mb-2" style={{ color: '#b91c1c' }}>{t('admin.settings.dangerTitle', { defaultValue: 'Danger Zone' })}</h3>
+          <p className="text-sm mb-5" style={{ color: '#4B5F63' }}>
+            {t('admin.settings.dangerMessage', { defaultValue: 'Deleting this apartment will permanently remove all associated households, meter readings, billing cycles, invoices, fines, and resident accounts. This action cannot be undone.' })}
+          </p>
+          <Btn variant="danger" onClick={() => setShowConfirm(true)}>{t('admin.settings.deleteButton', { defaultValue: 'Delete Apartment' })}</Btn>
+        </Card>
+      )}
 
-      <ConfirmDialog
-        open={showConfirm}
-        title={t('admin.settings.confirmTitle', { defaultValue: 'Delete {{name}}?', name: apartment.name })}
-        message={t('admin.settings.confirmMessage', { defaultValue: 'This will permanently delete all households, readings, invoices, fines, and resident accounts. This action cannot be undone.' })}
-        confirmLabel={deleting ? t('admin.settings.deleting', { defaultValue: 'Deleting…' }) : t('admin.settings.confirmButton', { defaultValue: 'Yes, delete apartment' })}
-        onConfirm={remove}
-        onCancel={() => setShowConfirm(false)}
-      />
+      {isSuperAdmin && (
+        <ConfirmDialog
+          open={showConfirm}
+          title={t('admin.settings.confirmTitle', { defaultValue: 'Delete {{name}}?', name: apartment.name })}
+          message={t('admin.settings.confirmMessage', { defaultValue: 'This will permanently delete all households, readings, invoices, fines, and resident accounts. This action cannot be undone.' })}
+          confirmLabel={deleting ? t('admin.settings.deleting', { defaultValue: 'Deleting…' }) : t('admin.settings.confirmButton', { defaultValue: 'Yes, delete apartment' })}
+          onConfirm={remove}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
     </div>
   )
 }
 
-/* ── Main Admin Console ───────────────────────────────────────────────────── */
-export default function AdminConsole() {
+/* ── Super Admin Dedicated Console ────────────────────────────────────────── */
+function SuperAdminConsole() {
+  const { t } = useTranslation()
+  const [activeTab, setActiveTab] = useState('overview')
+  const [apartments, setApartments] = useState([])
+  const [selectedApartmentId, setSelectedApartmentId] = useState('')
+  const [households, setHouseholds] = useState([])
+  const [pendingAdmins, setPendingAdmins] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [banner, setBanner] = useState(null)
+  
+  // Apartment creation state
+  const [creatingName, setCreatingName] = useState('')
+  const [creatingAddress, setCreatingAddress] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+
+  // Apartment edit/delete state
+  const [editingApt, setEditingApt] = useState(null)
+  const [editName, setEditName] = useState('')
+  const [editAddress, setEditAddress] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deletingAptId, setDeletingAptId] = useState(null)
+  const [busyId, setBusyId] = useState(null)
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [aptsRes, pendingRes] = await Promise.all([
+        axiosClient.get('/admin/apartments/detail'),
+        axiosClient.get('/admin/pending-admins'),
+      ])
+      const apts = extractArray(aptsRes.data)
+      setApartments(apts)
+      setPendingAdmins(extractArray(pendingRes.data))
+      if (apts.length > 0 && !selectedApartmentId) {
+        setSelectedApartmentId(String(apts[0].id))
+      }
+    } catch (err) {
+      axiosClient.get('/public/apartments').then(r => setApartments(extractArray(r.data))).catch(() => {})
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedApartmentId])
+
+  useEffect(() => { loadData() }, [loadData])
+
+  useEffect(() => {
+    if (selectedApartmentId) {
+      axiosClient.get(`/admin/apartments/${selectedApartmentId}/households`)
+        .then(r => setHouseholds(extractArray(r.data)))
+        .catch(() => setHouseholds([]))
+    }
+  }, [selectedApartmentId])
+
+  const handleCreateApartment = async () => {
+    if (!creatingName || !creatingAddress) return
+    setCreating(true)
+    setBanner(null)
+    try {
+      const res = await axiosClient.post('/admin/apartments', { name: creatingName, address: creatingAddress })
+      setApartments(p => [...p, res.data])
+      if (!selectedApartmentId) setSelectedApartmentId(String(res.data.id))
+      setCreatingName('')
+      setCreatingAddress('')
+      setShowCreateModal(false)
+      setBanner({ type: 'success', msg: `Apartment "${res.data.name}" created successfully!` })
+    } catch (err) {
+      setBanner({ type: 'danger', msg: err.response?.data?.message || 'Could not create apartment' })
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleUpdateApartment = async () => {
+    if (!editingApt || !editName || !editAddress) return
+    setSavingEdit(true)
+    try {
+      const res = await axiosClient.put(`/admin/apartments/${editingApt.id}`, { name: editName, address: editAddress })
+      setApartments(p => p.map(a => a.id === editingApt.id ? res.data : a))
+      setEditingApt(null)
+      setBanner({ type: 'success', msg: `Apartment details updated successfully.` })
+    } catch (err) {
+      setBanner({ type: 'danger', msg: err.response?.data?.message || 'Could not update apartment' })
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const handleDeleteApartment = async (aptId, aptName) => {
+    setBusyId(aptId)
+    try {
+      await axiosClient.delete(`/admin/apartments/${aptId}`)
+      setApartments(p => p.filter(a => a.id !== aptId))
+      if (String(selectedApartmentId) === String(aptId)) {
+        const remaining = apartments.filter(a => a.id !== aptId)
+        setSelectedApartmentId(remaining.length > 0 ? String(remaining[0].id) : '')
+      }
+      setDeletingAptId(null)
+      setBanner({ type: 'success', msg: `Apartment "${aptName}" deleted.` })
+    } catch (err) {
+      setBanner({ type: 'danger', msg: err.response?.data?.message || 'Could not delete apartment' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const approveAdmin = async (userId, name) => {
+    setBusyId(userId)
+    try {
+      await axiosClient.post(`/admin/residents/${userId}/approve`)
+      setBanner({ type: 'success', msg: `Apartment Admin "${name}" has been approved!` })
+      loadData()
+    } catch (err) {
+      setBanner({ type: 'danger', msg: err.response?.data?.message || 'Could not approve admin.' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const rejectAdmin = async (userId, name) => {
+    setBusyId(userId)
+    try {
+      await axiosClient.post(`/admin/residents/${userId}/reject`)
+      setBanner({ type: 'danger', msg: `Apartment Admin "${name}" registration rejected.` })
+      loadData()
+    } catch (err) {
+      setBanner({ type: 'danger', msg: err.response?.data?.message || 'Could not reject admin.' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const tabs = [
+    { key: 'overview', label: t('superAdmin.tabOverview', { defaultValue: 'Platform Overview' }) },
+    { key: 'apartments', label: t('superAdmin.tabApartments', { defaultValue: 'Apartments Directory' }) },
+    { key: 'households', label: t('superAdmin.tabHouseholds', { defaultValue: 'Household Inspection' }) },
+    { key: 'pending_admins', label: t('superAdmin.tabPendingAdmins', { defaultValue: 'Pending Admin Approvals' }), badge: pendingAdmins.length },
+  ]
+
+  return (
+    <div className="min-h-screen" style={{ background: '#F4FAF9' }}>
+      <Navbar />
+
+      <main className="max-w-7xl mx-auto px-6 pt-24 pb-16">
+        <div className="animate-fade-up mb-6 flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="font-display text-3xl font-bold" style={{ color: '#06141B' }}>{t('superAdmin.title', { defaultValue: 'Super Admin Control Panel' })}</h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold text-amber-700 bg-amber-100 border border-amber-300">
+                👑 {t('superAdmin.badge', { defaultValue: 'Super Admin' })}
+              </span>
+            </div>
+            <p className="text-sm" style={{ color: '#7A9097' }}>
+              {t('superAdmin.subtitle', { defaultValue: 'System Oversight · Multi-Apartment Management & Admin Approvals' })}
+            </p>
+          </div>
+          <Btn variant="primary" onClick={() => setShowCreateModal(true)}>
+            {t('superAdmin.addApartment', { defaultValue: '+ Add New Apartment' })}
+          </Btn>
+        </div>
+
+        {banner && (
+          <div className="mb-4">
+            <AlertBanner type={banner.type} message={banner.msg} onDismiss={() => setBanner(null)} />
+          </div>
+        )}
+
+        {/* Modal / Card to Create Apartment */}
+        {showCreateModal && (
+          <Card className="p-6 mb-6 border-teal-300 animate-slide-down">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display font-semibold text-lg" style={{ color: '#06141B' }}>{t('superAdmin.createModalTitle', { defaultValue: 'Create a New Apartment' })}</h3>
+              <button onClick={() => setShowCreateModal(false)} className="text-xs text-gray-500 hover:text-gray-800">✕ {t('common.hide', { defaultValue: 'Close' })}</button>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4B5F63' }}>{t('admin.createNameLabel', { defaultValue: 'Apartment Name' })}</label>
+                <input value={creatingName} onChange={e => setCreatingName(e.target.value)} placeholder="e.g. Greenview Heights" className="field-input w-full px-4 py-2.5 rounded-xl text-sm border" style={{ border: '1.5px solid rgba(6,20,27,0.12)', color: '#06141B' }} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4B5F63' }}>{t('admin.createAddressLabel', { defaultValue: 'Address' })}</label>
+                <input value={creatingAddress} onChange={e => setCreatingAddress(e.target.value)} placeholder="e.g. 14 Lake View Road, Jubilee Hills" className="field-input w-full px-4 py-2.5 rounded-xl text-sm border" style={{ border: '1.5px solid rgba(6,20,27,0.12)', color: '#06141B' }} />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Btn variant="primary" onClick={handleCreateApartment} loading={creating}>{t('admin.createButton', { defaultValue: 'Create Apartment' })}</Btn>
+              <Btn variant="secondary" onClick={() => setShowCreateModal(false)}>{t('common.cancel', { defaultValue: 'Cancel' })}</Btn>
+            </div>
+          </Card>
+        )}
+
+        <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
+
+        <div key={activeTab} className="animate-fade-up py-6">
+          {activeTab === 'overview' && (
+            <div className="flex flex-col gap-6">
+              <div className="grid sm:grid-cols-3 gap-5">
+                <StatCard title={t('superAdmin.statTotalApartments', { defaultValue: 'Total Apartments' })} value={apartments.length} caption={t('superAdmin.statTotalApartmentsCaption', { defaultValue: 'Managed across platform' })} icon="🏢" />
+                <StatCard title={t('superAdmin.statPendingAdmins', { defaultValue: 'Pending Admins' })} value={pendingAdmins.length} caption={t('superAdmin.statPendingAdminsCaption', { defaultValue: 'Awaiting Super Admin approval' })} icon="👑" variant={pendingAdmins.length > 0 ? 'warning' : 'default'} />
+                <StatCard title={t('superAdmin.statPlatformStatus', { defaultValue: 'Platform Status' })} value="Active" caption={t('superAdmin.statPlatformStatusCaption', { defaultValue: 'All systems operational' })} icon="🟢" />
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <Card className="p-6 cursor-pointer hover:border-teal-500 transition-all" onClick={() => setActiveTab('apartments')}>
+                  <div className="text-3xl mb-2">🏢</div>
+                  <h3 className="font-display font-semibold text-lg mb-1" style={{ color: '#06141B' }}>{t('superAdmin.cardDirectoryTitle', { defaultValue: 'Apartment Directory' })}</h3>
+                  <p className="text-sm text-gray-500 mb-4">{t('superAdmin.cardDirectoryDesc', { defaultValue: 'View, edit, or delete registered apartment communities.' })}</p>
+                  <span className="text-xs font-semibold text-teal-600">{t('superAdmin.cardDirectoryAction', { defaultValue: 'Manage Apartments →' })}</span>
+                </Card>
+                <Card className="p-6 cursor-pointer hover:border-teal-500 transition-all" onClick={() => setActiveTab('pending_admins')}>
+                  <div className="text-3xl mb-2">📋</div>
+                  <h3 className="font-display font-semibold text-lg mb-1" style={{ color: '#06141B' }}>{t('superAdmin.cardPendingTitle', { defaultValue: 'Pending Admin Approvals' })}</h3>
+                  <p className="text-sm text-gray-500 mb-4">{t('superAdmin.cardPendingDesc', { defaultValue: 'Approve apartment owners who registered to manage their apartment.' })}</p>
+                  <span className="text-xs font-semibold text-teal-600">{t('superAdmin.cardPendingAction', { defaultValue: `Review ${pendingAdmins.length} Pending →`, count: pendingAdmins.length })}</span>
+                </Card>
+                <Card className="p-6 cursor-pointer hover:border-teal-500 transition-all" onClick={() => setActiveTab('households')}>
+                  <div className="text-3xl mb-2">🔍</div>
+                  <h3 className="font-display font-semibold text-lg mb-1" style={{ color: '#06141B' }}>{t('superAdmin.cardInspectTitle', { defaultValue: 'Inspect Households' })}</h3>
+                  <p className="text-sm text-gray-500 mb-4">{t('superAdmin.cardInspectDesc', { defaultValue: 'Inspect flats, occupancy, and meter serial numbers per apartment.' })}</p>
+                  <span className="text-xs font-semibold text-teal-600">{t('superAdmin.cardInspectAction', { defaultValue: 'Inspect Households →' })}</span>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'apartments' && (
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-display font-semibold text-xl" style={{ color: '#06141B' }}>{t('superAdmin.tabApartments', { defaultValue: 'Apartments Directory' })}</h3>
+                  <p className="text-sm text-gray-500">All registered apartment complexes on AquaTrack</p>
+                </div>
+                <Btn variant="primary" size="sm" onClick={() => setShowCreateModal(true)}>{t('superAdmin.addApartment', { defaultValue: '+ Add Apartment' })}</Btn>
+              </div>
+
+              {apartments.length === 0 ? (
+                <EmptyState icon="🏢" title={t('superAdmin.emptyApartmentsTitle', { defaultValue: 'No apartments found' })} message={t('superAdmin.emptyApartmentsMsg', { defaultValue: "Click '+ Add Apartment' to create the first apartment community." })} />
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {apartments.map(apt => (
+                    <Card key={apt.id} className="p-6 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h4 className="font-display font-bold text-lg" style={{ color: '#06141B' }}>{apt.name}</h4>
+                          <span className="text-xs px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200 font-semibold">ID: #{apt.id}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-3 flex items-center gap-1">📍 {apt.address}</p>
+
+                        {/* Admin details section */}
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">{t('superAdmin.aptAdminHeader', { defaultValue: 'Apartment Admin' })}</p>
+                          {apt.admins && apt.admins.length > 0 ? (
+                            apt.admins.map(admin => (
+                              <div key={admin.id} className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex flex-col gap-0.5 mb-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-semibold text-gray-900">👤 {admin.fullName}</span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${admin.approvalStatus === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
+                                    {admin.approvalStatus}
+                                  </span>
+                                </div>
+                                <span className="text-[11px] text-gray-500 font-mono">@{admin.username}</span>
+                                <span className="text-[11px] text-gray-500">✉️ {admin.email}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="bg-amber-50/60 p-2 rounded-lg border border-amber-200/50 text-[11px] text-amber-700 font-medium">
+                              ⚠️ {t('superAdmin.noAdminRegistered', { defaultValue: 'No Admin registered yet' })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-2 mt-3">
+                        <Btn variant="secondary" size="sm" onClick={() => { setSelectedApartmentId(String(apt.id)); setActiveTab('households'); }}>
+                          {t('superAdmin.inspectFlats', { defaultValue: `Inspect (${apt.householdCount || 0} Flats)`, count: apt.householdCount || 0 })}
+                        </Btn>
+                        <div className="flex gap-1">
+                          <Btn variant="ghost" size="sm" onClick={() => { setEditingApt(apt); setEditName(apt.name); setEditAddress(apt.address); }}>Edit</Btn>
+                          <Btn variant="danger" size="sm" onClick={() => setDeletingAptId(apt.id)}>Delete</Btn>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'households' && (
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <h3 className="font-display font-semibold text-xl" style={{ color: '#06141B' }}>{t('superAdmin.inspectHouseholdsTitle', { defaultValue: 'Inspect Households' })}</h3>
+                  <p className="text-sm text-gray-500">{t('superAdmin.inspectHouseholdsDesc', { defaultValue: 'Read-only oversight of flats and meter serial numbers per apartment' })}</p>
+                </div>
+                {apartments.length > 0 && (
+                  <select
+                    value={selectedApartmentId}
+                    onChange={e => setSelectedApartmentId(e.target.value)}
+                    className="px-4 py-2 rounded-xl text-sm border font-medium bg-white"
+                    style={{ minWidth: 220, border: '1.5px solid rgba(6,20,27,0.12)' }}
+                  >
+                    {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                )}
+              </div>
+
+              {households.length === 0 ? (
+                <EmptyState icon="🏠" title={t('superAdmin.emptyHouseholdsTitle', { defaultValue: 'No households found' })} message={t('superAdmin.emptyHouseholdsMsg', { defaultValue: 'No households registered under this apartment yet.' })} />
+              ) : (
+                <Card className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(6,20,27,0.07)' }}>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('admin.households.flatLabel', { defaultValue: 'Flat Number' })}</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('superAdmin.tableSize', { defaultValue: 'Size (sq ft)' })}</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('admin.households.occupancyLabel', { defaultValue: 'Occupancy' })}</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('superAdmin.tableMeterSerial', { defaultValue: 'Meter Serial #' })}</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('superAdmin.tableMeterStatus', { defaultValue: 'Meter Status' })}</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('superAdmin.tableDailyLimit', { defaultValue: 'Daily Limit (kL)' })}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {households.map(h => (
+                          <tr key={h.id} className="trow" style={{ borderBottom: '1px solid rgba(6,20,27,0.05)' }}>
+                            <td className="px-6 py-3.5 font-semibold text-gray-900">{h.flatNumber}</td>
+                            <td className="px-6 py-3.5 text-gray-600">{h.flatSizeSqft || '—'} sq ft</td>
+                            <td className="px-6 py-3.5 text-gray-600">👤 {h.occupancy} residents</td>
+                            <td className="px-6 py-3.5 text-xs font-mono text-gray-700">{h.meterSerialNumber || '—'}</td>
+                            <td className="px-6 py-3.5">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${h.meterActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600'}`}>
+                                {h.meterActive ? t('admin.households.meterActive', { defaultValue: 'Active' }) : t('admin.households.meterInactive', { defaultValue: 'Inactive' })}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3.5 text-gray-600">{h.dailyLimitKl ? `${h.dailyLimitKl} kL` : 'Unlimited'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'pending_admins' && (
+            <div className="flex flex-col gap-6">
+              <div>
+                <h3 className="font-display font-semibold text-xl" style={{ color: '#06141B' }}>{t('superAdmin.pendingTitle', { defaultValue: 'Pending Apartment Admin Registrations' })}</h3>
+                <p className="text-sm text-gray-500">{t('superAdmin.pendingDesc', { defaultValue: 'Review apartment owners/admins awaiting Super Admin approval' })}</p>
+              </div>
+
+              {pendingAdmins.length === 0 ? (
+                <EmptyState icon="✅" title={t('superAdmin.pendingEmptyTitle', { defaultValue: 'All caught up!' })} message={t('superAdmin.pendingEmptyMsg', { defaultValue: 'No pending apartment admin registrations to review.' })} />
+              ) : (
+                <Card className="overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(6,20,27,0.07)' }}>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('superAdmin.tableFullName', { defaultValue: 'Full Name' })}</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('superAdmin.tableUsername', { defaultValue: 'Username' })}</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('superAdmin.tableEmail', { defaultValue: 'Email' })}</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('superAdmin.tableTargetApartment', { defaultValue: 'Target Apartment' })}</th>
+                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-widest text-gray-500">{t('superAdmin.tableActions', { defaultValue: 'Actions' })}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingAdmins.map(admin => (
+                          <tr key={admin.id} className="trow" style={{ borderBottom: '1px solid rgba(6,20,27,0.05)' }}>
+                            <td className="px-6 py-3.5 font-semibold text-gray-900">{admin.fullName}</td>
+                            <td className="px-6 py-3.5 text-xs font-mono text-gray-600">{admin.username}</td>
+                            <td className="px-6 py-3.5 text-xs text-gray-600">{admin.email}</td>
+                            <td className="px-6 py-3.5 font-medium text-teal-700">{admin.apartment?.name || 'Assigned Apartment'}</td>
+                            <td className="px-6 py-3.5">
+                              <div className="flex gap-2">
+                                <Btn variant="primary" size="sm" onClick={() => approveAdmin(admin.id, admin.fullName)} loading={busyId === admin.id}>{t('superAdmin.approve', { defaultValue: 'Approve' })}</Btn>
+                                <Btn variant="danger" size="sm" onClick={() => rejectAdmin(admin.id, admin.fullName)} loading={busyId === admin.id}>{t('superAdmin.reject', { defaultValue: 'Reject' })}</Btn>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Modal to Edit Apartment */}
+        {editingApt && (
+          <ConfirmDialog
+            open={true}
+            title={`Edit Apartment: ${editingApt.name}`}
+            confirmLabel={savingEdit ? 'Saving…' : 'Save Changes'}
+            onConfirm={handleUpdateApartment}
+            onCancel={() => setEditingApt(null)}
+            message={
+              <div className="flex flex-col gap-3 mt-3 text-left">
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">Apartment Name</label>
+                  <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">Address</label>
+                  <input value={editAddress} onChange={e => setEditAddress(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm" />
+                </div>
+              </div>
+            }
+          />
+        )}
+
+        {/* Modal to Confirm Delete Apartment */}
+        {deletingAptId && (
+          <ConfirmDialog
+            open={true}
+            title="Delete Apartment?"
+            message="This will permanently remove the apartment community, households, and all related data. This action cannot be undone."
+            confirmLabel={busyId === deletingAptId ? 'Deleting…' : 'Yes, Delete Apartment'}
+            onConfirm={() => handleDeleteApartment(deletingAptId, apartments.find(a => a.id === deletingAptId)?.name)}
+            onCancel={() => setDeletingAptId(null)}
+          />
+        )}
+      </main>
+    </div>
+  )
+}
+
+/* ── Apartment Admin Operational Console ──────────────────────────────────── */
+function ApartmentAdminConsole() {
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
   const { t } = useTranslation()
   const [apartments, setApartments] = useState([])
   
-  // Persist selected apartmentId across reloads
-  const [apartmentId, setApartmentId] = useState(() => localStorage.getItem('selectedApartmentId') || '')
+  const [apartmentId, setApartmentId] = useState(() => {
+    if (user?.apartmentId) return String(user.apartmentId)
+    return localStorage.getItem('selectedApartmentId') || ''
+  })
   
   const [pendingCount, setPendingCount] = useState(0)
   const [alertCount, setAlertCount] = useState(0)
-  const [creatingName, setCreatingName] = useState('')
-  const [creatingAddress, setCreatingAddress] = useState('')
-  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     axiosClient.get('/public/apartments').then(res => {
       const apts = extractArray(res.data)
       setApartments(apts)
       
-      // If no apartment is currently selected, pick the first one and save to localStorage
-      if (apts.length > 0) {
-        const savedId = localStorage.getItem('selectedApartmentId')
-        const exists = apts.some(a => String(a.id) === String(savedId))
-        
-        if (!savedId || !exists) {
-          const initialId = String(apts[0].id)
-          setApartmentId(initialId)
-          localStorage.setItem('selectedApartmentId', initialId)
-        }
+      if (user?.apartmentId) {
+        setApartmentId(String(user.apartmentId))
+      } else if (apts.length > 0 && !apartmentId) {
+        setApartmentId(String(apts[0].id))
       }
     }).catch(() => {})
-  }, [])
-
-  const handleApartmentChange = (e) => {
-    const selectedId = e.target.value
-    setApartmentId(selectedId)
-    localStorage.setItem('selectedApartmentId', selectedId)
-  }
+  }, [user?.apartmentId])
 
   const refreshBadges = useCallback(() => {
     if (!apartmentId) return
@@ -1349,23 +1773,6 @@ export default function AdminConsole() {
   }, [apartmentId])
 
   useEffect(() => { refreshBadges() }, [refreshBadges, activeTab])
-
-  const createApartment = async () => {
-    if (!creatingName || !creatingAddress) return
-    setCreating(true)
-    try {
-      const res = await axiosClient.post('/admin/apartments', { name: creatingName, address: creatingAddress })
-      const newApt = res.data
-      setApartments(p => [...p, newApt])
-      setApartmentId(String(newApt.id))
-      localStorage.setItem('selectedApartmentId', String(newApt.id))
-      setCreatingName(''); setCreatingAddress('')
-    } catch (err) {
-      // ignore
-    } finally {
-      setCreating(false)
-    }
-  }
 
   const tabs = [
     { key: 'overview', label: t('admin.tabs.overview', { defaultValue: 'Overview' }) },
@@ -1393,13 +1800,9 @@ export default function AdminConsole() {
     settings: (
       <SettingsTab
         apartment={currentApartment}
+        isSuperAdmin={false}
         onUpdated={(updated) => setApartments(p => p.map(a => a.id === updated.id ? updated : a))}
-        onDeleted={() => {
-          setApartments(p => p.filter(a => String(a.id) !== String(apartmentId)))
-          setApartmentId('')
-          localStorage.removeItem('selectedApartmentId')
-          setActiveTab('overview')
-        }}
+        onDeleted={() => {}}
       />
     ),
   } : {}
@@ -1411,69 +1814,56 @@ export default function AdminConsole() {
       <main className="max-w-7xl mx-auto px-6 pt-24 pb-16">
         <div className="animate-fade-up mb-6 flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold" style={{ color: '#06141B' }}>{t('admin.title', { defaultValue: 'Admin Console' })}</h1>
-            <p className="text-sm mt-1" style={{ color: '#7A9097' }}>{t('admin.subtitle', { defaultValue: 'Manage your apartment community · {{date}}', date: new Date().toLocaleDateString('en-IN', { dateStyle: 'long' }) })}</p>
+            <h1 className="font-display text-3xl font-bold" style={{ color: '#06141B' }}>
+              {t('admin.title', { defaultValue: 'Admin Console' })}
+            </h1>
+            <p className="text-sm mt-1" style={{ color: '#7A9097' }}>
+              {t('admin.subtitle', { defaultValue: 'Manage your apartment community · {{date}}', date: new Date().toLocaleDateString('en-IN', { dateStyle: 'long' }) })}
+            </p>
           </div>
-          {apartments.length > 0 && (
-            <select
-              value={apartmentId}
-              onChange={handleApartmentChange}
-              className="px-4 py-2.5 rounded-xl text-sm border font-medium appearance-none"
-              style={{ border: '1.5px solid rgba(6,20,27,0.12)', color: '#06141B', background: '#fff', minWidth: 220 }}
-            >
-              {apartments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+          {currentApartment && (
+            <div className="px-4 py-2 rounded-xl text-sm font-semibold border flex items-center gap-2" style={{ background: 'rgba(18,165,148,0.08)', borderColor: 'rgba(18,165,148,0.2)', color: '#12A594' }}>
+              🏢 {currentApartment.name}
+            </div>
           )}
         </div>
 
-        {!apartmentId ? (
-          <div className="animate-fade-up max-w-md">
-            <Card className="p-6">
-              <h3 className="font-display font-semibold text-lg mb-5" style={{ color: '#06141B' }}>{t('admin.createTitle', { defaultValue: 'Create a New Apartment' })}</h3>
-              <div className="flex flex-col gap-4">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4B5F63' }}>{t('admin.createNameLabel', { defaultValue: 'Apartment name' })}</label>
-                  <input value={creatingName} onChange={e => setCreatingName(e.target.value)} placeholder={t('admin.createNamePlaceholder', { defaultValue: 'Greenview Heights' })} className="field-input w-full px-4 py-2.5 rounded-xl text-sm border" style={{ border: '1.5px solid rgba(6,20,27,0.12)', color: '#06141B' }} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-widest mb-1.5" style={{ color: '#4B5F63' }}>{t('admin.createAddressLabel', { defaultValue: 'Address' })}</label>
-                  <input value={creatingAddress} onChange={e => setCreatingAddress(e.target.value)} placeholder={t('admin.createAddressPlaceholder', { defaultValue: '14, Lake View Road…' })} className="field-input w-full px-4 py-2.5 rounded-xl text-sm border" style={{ border: '1.5px solid rgba(6,20,27,0.12)', color: '#06141B' }} />
-                </div>
-                <Btn variant="primary" onClick={createApartment} loading={creating}>{t('admin.createButton', { defaultValue: 'Create Apartment' })}</Btn>
-              </div>
-            </Card>
-          </div>
-        ) : (
-          <>
-            {/* Pending approvals banner */}
-            {activeTab !== 'pending' && pendingCount > 0 && (
-              <div className="animate-slide-down mb-4">
-                <div
-                  className="flex items-center justify-between px-5 py-3.5 rounded-xl gap-3 flex-wrap"
-                  style={{ background: 'rgba(244,185,66,0.1)', border: '1px solid rgba(244,185,66,0.3)' }}
-                >
-                  <span className="text-sm font-medium" style={{ color: '#92400e' }}>
-                    {t('admin.pendingBanner', { defaultValue: '🔔 {{count}} resident registration(s) waiting for your approval', count: pendingCount })}
-                  </span>
-                  <button
-                    onClick={() => setActiveTab('pending')}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
-                    style={{ background: '#F4B942', color: '#06141B' }}
-                  >
-                    {t('admin.reviewNow', { defaultValue: 'Review now' })}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
-
-            <div key={activeTab} className="animate-fade-up">
-              {tabContent[activeTab]}
+        {/* Pending approvals banner */}
+        {activeTab !== 'pending' && pendingCount > 0 && (
+          <div className="animate-slide-down mb-4">
+            <div
+              className="flex items-center justify-between px-5 py-3.5 rounded-xl gap-3 flex-wrap"
+              style={{ background: 'rgba(244,185,66,0.1)', border: '1px solid rgba(244,185,66,0.3)' }}
+            >
+              <span className="text-sm font-medium" style={{ color: '#92400e' }}>
+                {t('admin.pendingBanner', { defaultValue: '🔔 {{count}} resident registration(s) waiting for your approval', count: pendingCount })}
+              </span>
+              <button
+                onClick={() => setActiveTab('pending')}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+                style={{ background: '#F4B942', color: '#06141B' }}
+              >
+                {t('admin.reviewNow', { defaultValue: 'Review now' })}
+              </button>
             </div>
-          </>
+          </div>
         )}
+
+        <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
+
+        <div key={activeTab} className="animate-fade-up">
+          {tabContent[activeTab]}
+        </div>
       </main>
     </div>
   )
+}
+
+/* ── Main Router Entry Component ─────────────────────────────────────────── */
+export default function AdminConsole() {
+  const { user } = useAuth()
+  if (user?.role === 'SUPER_ADMIN') {
+    return <SuperAdminConsole />
+  }
+  return <ApartmentAdminConsole />
 }

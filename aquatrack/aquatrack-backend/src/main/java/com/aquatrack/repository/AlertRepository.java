@@ -8,6 +8,7 @@ import java.util.List;
 public interface AlertRepository extends JpaRepository<Alert, Long> {
     List<Alert> findByHouseholdIdOrderByCreatedAtDesc(Long householdId);
     List<Alert> findByResolvedFalseOrderByCreatedAtDesc();
+    List<Alert> findByHousehold_Apartment_Id(Long apartmentId);
     List<Alert> findByHousehold_Apartment_IdAndResolvedFalseOrderByCreatedAtDesc(Long apartmentId);
     boolean existsByHouseholdIdAndAlertTypeAndResolvedFalse(Long householdId, AlertType alertType);
 }

@@ -23,7 +23,11 @@ export default function Navbar() {
 
   const loggedIn = !!user
   const userName = user?.fullName || ''
-  const userRole = user?.role === 'ADMIN' ? t('navbar.adminRole') : t('navbar.residentRole')
+  const userRole = user?.role === 'SUPER_ADMIN'
+    ? t('navbar.superAdminRole', { defaultValue: 'Super Admin' })
+    : user?.role === 'ADMIN'
+    ? t('navbar.adminRole', { defaultValue: 'Apartment Admin' })
+    : t('navbar.residentRole', { defaultValue: 'Resident' })
 
   const handleLogout = () => {
     logout()
@@ -44,7 +48,7 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <button onClick={() => navigate(loggedIn ? (user.role === 'ADMIN' ? '/admin' : '/resident') : '/')} className="flex items-center gap-2.5 group focus:outline-none">
+        <button onClick={() => navigate(loggedIn ? ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') ? '/admin' : '/resident') : '/')} className="flex items-center gap-2.5 group focus:outline-none">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
             style={{ background: 'linear-gradient(135deg,#12A594,#0B3D3F)' }}

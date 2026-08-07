@@ -12,7 +12,12 @@ public class RegisterRequest {
     @NotBlank @Email
     private String email;
 
-    @NotBlank @Size(min = 6)
+    @NotBlank
+    @Size(min = 8, max = 100, message = "Password must be at least 8 characters long")
+    @Pattern(
+        regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*?&#^()_\\-+=~\\[\\]{}:;<>,.?/|\\\\])[A-Za-z\\d@$!%*?&#^()_\\-+=~\\[\\]{}:;<>,.?/|\\\\]{8,}$",
+        message = "Password must contain at least 8 characters, including letters, numbers, and a special character."
+    )
     private String password;
 
     @NotBlank

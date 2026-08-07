@@ -42,12 +42,12 @@ export default function Login() {
     setLoading(true)
     try {
       const data = await login(username, password)
-      const expectedRole = role === 'admin' ? 'ADMIN' : 'RESIDENT'
-      const targetPath = data.role === 'ADMIN' ? '/admin' : '/resident'
+      const isAdminRole = data.role === 'ADMIN' || data.role === 'SUPER_ADMIN'
+      const targetPath = isAdminRole ? '/admin' : '/resident'
 
-      if (data.role !== expectedRole) {
+      if ((role === 'admin' && !isAdminRole) || (role === 'resident' && isAdminRole)) {
         const expectedRoleLabel = role === 'admin' ? t('auth.roleAdmin', { defaultValue: 'Apartment Admin' }) : t('auth.roleResident', { defaultValue: 'Resident' })
-        const roleLabel = data.role === 'ADMIN' ? t('auth.roleAdmin', { defaultValue: 'Apartment Admin' }) : t('auth.roleResident', { defaultValue: 'Resident' })
+        const roleLabel = isAdminRole ? t('auth.roleAdmin', { defaultValue: 'Admin' }) : t('auth.roleResident', { defaultValue: 'Resident' })
         setError(
           t('auth.login.roleMismatch', {
             defaultValue: `This account is registered as ${roleLabel}, not ${expectedRoleLabel}. Redirecting to the correct dashboard.`,
@@ -55,7 +55,7 @@ export default function Login() {
             expected: expectedRoleLabel
           })
         )
-        setTimeout(() => navigate(targetPath), 2000)
+        setTimeout(() => navigate(targetPath), 1500)
       } else {
         navigate(targetPath)
       }

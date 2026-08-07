@@ -1,5 +1,6 @@
 package com.aquatrack.controller;
 
+import com.aquatrack.dto.admin.ApartmentDetailResponse;
 import com.aquatrack.dto.admin.HouseholdDetailResponse;
 import com.aquatrack.dto.household.ApartmentRequest;
 import com.aquatrack.dto.household.HouseholdRequest;
@@ -42,6 +43,11 @@ public class ApartmentController {
     @GetMapping("/public/apartments")
     public ResponseEntity<List<Apartment>> listApartments() {
         return ResponseEntity.ok(apartmentService.listApartments());
+    }
+
+    @GetMapping("/admin/apartments/detail")
+    public ResponseEntity<List<ApartmentDetailResponse>> listApartmentDetails() {
+        return ResponseEntity.ok(apartmentService.listApartmentDetails());
     }
 
     @GetMapping("/resident/apartments/{id}")

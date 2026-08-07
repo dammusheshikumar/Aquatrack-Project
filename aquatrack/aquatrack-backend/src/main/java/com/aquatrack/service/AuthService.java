@@ -43,11 +43,21 @@ public class AuthService {
     }
 
     /**
-     * ADMIN accounts are created APPROVED and get a token immediately.
-     * RESIDENT accounts are created PENDING — no token is issued; the
-     * resident is notified by email once an admin approves them.
+     * SUPER_ADMIN accounts are created APPROVED and get a token immediately.
+     * ADMIN (Apartment Admin) and RESIDENT accounts start PENDING — no token is issued
+     * until approved by Super Admin / Apartment Admin respectively.
      */
+    private static final String PASSWORD_PATTERN =
+            "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*?&#^()_\\-+=~\\[\\]{}:;<>,.?/|\\\\])[A-Za-z\\d@$!%*?&#^()_\\-+=~\\[\\]{}:;<>,.?/|\\\\]{8,}$";
+
+    private void validatePassword(String password) {
+        if (password == null || !password.matches(PASSWORD_PATTERN)) {
+            throw new BadRequestException("Password must be at least 8 characters long and contain letters, numbers, and at least one special character.");
+        }
+    }
+
     public RegisterResponse register(RegisterRequest req) {
+        validatePassword(req.getPassword());
         if (userRepository.existsByUsername(req.getUsername())) {
             throw new BadRequestException("Username already taken");
         }
@@ -55,24 +65,25 @@ public class AuthService {
             throw new BadRequestException("Email already registered");
         }
 
-        boolean isAdmin = req.getRole() == Role.ADMIN;
+        Role role = req.getRole() != null ? req.getRole() : Role.RESIDENT;
+        boolean isSuperAdmin = role == Role.SUPER_ADMIN;
 
         User.UserBuilder builder = User.builder()
                 .username(req.getUsername())
                 .email(req.getEmail())
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
                 .fullName(req.getFullName())
-                .role(req.getRole())
+                .role(role)
                 .enabled(true)
-                .approvalStatus(isAdmin ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING);
+                .approvalStatus(isSuperAdmin ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING);
 
-        if (isAdmin) {
+        if (role == Role.ADMIN) {
             if (req.getApartmentId() != null) {
                 Apartment apt = apartmentRepository.findById(req.getApartmentId())
                         .orElseThrow(() -> new BadRequestException("Apartment not found"));
                 builder.apartment(apt);
             }
-        } else {
+        } else if (role == Role.RESIDENT) {
             if (req.getHouseholdId() == null) {
                 throw new BadRequestException("householdId is required for RESIDENT registration");
             }
@@ -83,17 +94,22 @@ public class AuthService {
 
         User saved = userRepository.save(builder.build());
 
-        if (isAdmin) {
+        if (isSuperAdmin) {
             String token = jwtUtil.generateToken(saved.getUsername(), saved.getRole().name(), saved.getId());
             AuthResponse auth = new AuthResponse(token, saved.getUsername(), saved.getRole().name(), saved.getId(),
                     null, saved.getApartment() != null ? saved.getApartment().getId() : null, saved.getFullName());
-            return new RegisterResponse(false, "Account created.", auth);
+            return new RegisterResponse(false, "Super Admin account created.", auth);
         }
 
-        emailService.sendRegistrationPendingEmail(saved);
-        return new RegisterResponse(true,
-                "Your registration has been submitted. An apartment admin needs to approve your account before you can log in — you'll get an email once that happens.",
-                null);
+        String pendingMsg = role == Role.ADMIN
+                ? "Your Apartment Admin registration has been submitted successfully! Your account is pending approval from the Super Admin. You will be able to log in once approved."
+                : "Your registration has been submitted successfully! Your account is pending approval from your Apartment Admin. You will be able to log in once approved.";
+
+        try {
+            emailService.sendRegistrationPendingEmail(saved);
+        } catch (Exception ignored) {}
+
+        return new RegisterResponse(true, pendingMsg, null);
     }
 
     public AuthResponse login(LoginRequest req) {
@@ -115,15 +131,15 @@ public class AuthService {
                 apartmentId, user.getFullName());
     }
 
-    /** Shared by password login and Google login so both paths enforce the same approval gate. */
+    /** Enforces approval gate for both Resident and Apartment Admin accounts. */
     void enforceApproval(User user) {
-        if (user.getRole() == Role.RESIDENT && user.getApprovalStatus() != ApprovalStatus.APPROVED) {
+        if ((user.getRole() == Role.RESIDENT || user.getRole() == Role.ADMIN) && user.getApprovalStatus() != ApprovalStatus.APPROVED) {
             if (user.getApprovalStatus() == ApprovalStatus.PENDING) {
                 throw new BadRequestException(
-                        "Your registration is still pending admin approval. You'll receive an email once it's approved.");
+                        "Your registration is still pending approval. You'll be able to log in once approved.");
             }
             throw new BadRequestException(
-                    "Your registration was not approved. Contact your apartment admin for details.");
+                    "Your registration was not approved. Contact your administrator for details.");
         }
     }
 }

@@ -1,4 +1,5 @@
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\AquatrackApplication.java
+C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\config\DataSeeder.java
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\config\JwtAuthFilter.java
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\config\JwtUtil.java
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\config\SecurityConfig.java
@@ -12,6 +13,7 @@ C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\controller\TariffController.java
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\controller\UsageLogController.java
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\dto\admin\AdminOverviewResponse.java
+C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\dto\admin\ApartmentDetailResponse.java
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\dto\admin\FineRequest.java
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\dto\admin\HouseholdDetailResponse.java
 C:\Users\dammu\Downloads\aquatrack-fullstack-project\aquatrack\aquatrack-backend\src\main\java\com\aquatrack\dto\admin\ResidentAccountResponse.java

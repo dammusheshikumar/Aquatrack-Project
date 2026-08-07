@@ -1,3 +1,3 @@
 package com.aquatrack.entity;
 
-public enum Role { ADMIN, RESIDENT }
+public enum Role { SUPER_ADMIN, ADMIN, RESIDENT }
